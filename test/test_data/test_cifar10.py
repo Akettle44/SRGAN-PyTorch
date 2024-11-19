@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 class TestCIFAR10Dataset():
 
     def testInit(self):
-        root_dir = os.getcwd()
+        root_dir = os.path.join(os.getcwd(), "datasets")
         blur_kernel_size = (5,9)
         sigma = (0.1,5.)
         size = 100
@@ -25,7 +25,7 @@ class TestCIFAR10Dataset():
         assert cifar10.num_workers == 8
     
     def testDatasetSplits(self):
-        root_dir = os.getcwd()
+        root_dir = os.path.join(os.getcwd(), "datasets")
         blur_kernel_size = (5,9)
         sigma = (0.1,5.)
         size = 100
@@ -43,7 +43,7 @@ class TestCIFAR10Dataset():
         assert isinstance(cifar10.test_loader, DataLoader)
 
     def testGaussian(self):
-        root_dir = os.getcwd()
+        root_dir = os.path.join(os.getcwd(), "datasets")
         blur_kernel_size = (5,9)
         sigma = (0.1, 1.5)
         size = 32
@@ -55,7 +55,7 @@ class TestCIFAR10Dataset():
         assert pixel_diff < 500
         
     def testResizing(self):
-        root_dir = os.getcwd()
+        root_dir = os.path.join(os.getcwd(), "datasets")
         blur_kernel_size = (5,9)
         sigma = (0.1,1.5)
         size = 28

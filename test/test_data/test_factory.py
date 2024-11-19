@@ -9,7 +9,7 @@ class TestTaskFactory():
         """ Test that CIFAR10 object is instantiated correctly
         """
         task_name = "CIFAR10"
-        root_dir = os.getcwd()
+        root_dir = os.path.join(os.getcwd(), "datasets")
         blur_kernel_size = (5,9)
         sigma = (0.1, 5.)
         size = 100
