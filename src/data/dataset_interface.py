@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 class TaskDataset(ABC):
     @abstractmethod
-    def __init__(self,root_dir, blur_kernel_size, sigma, size, batch_size=4, num_workers=2):
+    def __init__(self,root_dir, blur_kernel_size, sigma, size, batch_size=32, num_workers=8):
         self.root_dir = root_dir
         self.blur_kernel_size = blur_kernel_size
         self.sigma = sigma

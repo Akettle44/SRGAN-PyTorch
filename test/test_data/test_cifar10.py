@@ -15,8 +15,8 @@ class TestCIFAR10Dataset():
         blur_kernel_size = (5,9)
         sigma = (0.1,5.)
         size = 100
-        batch_size = 4
-        num_workers = 2
+        batch_size = 32
+        num_workers = 8
 
         cifar10 = CIFAR10Dataset(root_dir, blur_kernel_size, sigma, size, batch_size, num_workers)
 
@@ -24,8 +24,8 @@ class TestCIFAR10Dataset():
         assert cifar10.blur_kernel_size == blur_kernel_size
         assert cifar10.sigma == sigma
         assert cifar10.size == size
-        assert cifar10.train_loader.batch_size == 4
-        assert cifar10.train_loader.num_workers == 2
+        assert cifar10.train_loader.batch_size == 32
+        assert cifar10.train_loader.num_workers == 8
         assert cifar10.train_dataset is not None
         assert cifar10.train_loader is not None
         assert cifar10.test_dataset is not None

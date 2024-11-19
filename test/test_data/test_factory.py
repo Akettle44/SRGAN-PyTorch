@@ -13,8 +13,8 @@ class TestTaskFactory():
         blur_kernel_size = (5,9)
         sigma = (0.1, 5.)
         size = 100
-        batch_size = 4
-        num_workers = 2
+        batch_size = 32
+        num_workers = 8
 
         cifar10 = TaskFactory.createTaskDataSet(task_name,root_dir,blur_kernel_size,sigma,size,batch_size,num_workers)
         assert isinstance(cifar10, CIFAR10Dataset)
