@@ -29,6 +29,8 @@ class TaskDataset(ABC):
         self.transform = transforms.Compose([transforms.GaussianBlur(kernel_size=self.blur_kernel_size, sigma=self.sigma),
                                         transforms.Resize(size=self.size),
                                         transforms.ToTensor(),
+                                        # Normalizes pixels to be in range [-1, 1]
+                                        # Supposed to help with model convergence, but can remove
                                         transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))
                                        ])
         
