@@ -31,8 +31,8 @@ class CIFAR10(Dataset):
         return transformed_img, self.label_transform(original_img)
 
 class CIFAR10Dataset(TaskDataset):
-    def __init__(self, root_dir, kernel_size, sigma, size, batch_size=4, num_workers=2):
-        super().__init__(root_dir, kernel_size, sigma, size, batch_size, num_workers)
+    def __init__(self, root_dir, blur_kernel_size, sigma, size, batch_size=4, num_workers=2):
+        super().__init__(root_dir, blur_kernel_size, sigma, size, batch_size, num_workers)
         self.load_dataset()
 
     @override
