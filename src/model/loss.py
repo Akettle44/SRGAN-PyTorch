@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 # Perceptual Loss Function from SRGAN Paper
 class PerceptualLoss(torch.nn.Module):
-    def __init___(self, p_weight=1e-3, featureModel="vgg19"):
+    def __init__(self, p_weight=1e-3, featureModel="vgg19"):
         super(PerceptualLoss, self).__init__()
         self.p_weight = p_weight
         self.featureNetwork = FeatureNetwork(featureModelChoice=featureModel)
@@ -45,19 +45,19 @@ class PerceptualLoss(torch.nn.Module):
             case "feat":
                 # Features from fake images
                 _ = self.featureNetwork(hr_fake)
-                feat_fake = self.featureNetwork.features['vgg']
+                feat_fake = self.featureNetwork.features['feats']
                 self.featureNetwork.clearFeatures()
 
                 # Features from real images
                 _ = self.featureNetwork(hr_real)
-                feat_real = self.featureNetwork.features['vgg']
+                feat_real = self.featureNetwork.features['feats']
                 self.featureNetwork.clearFeatures()
 
                 # MSE between representations (from paper)
-                l_c = torch.nn.MSELoss(feat_fake, feat_real)
+                l_c = F.mse_loss(feat_fake, feat_real, reduction='mean')
 
             case "mse":
-                l_c = torch.nn.MSELoss(hr_fake, hr_real)
+                l_c = F.mse_loss(hr_fake, hr_real, reduction='mean')
             case _:
                 raise(NotImplementedError)
 
@@ -74,15 +74,15 @@ class PerceptualLoss(torch.nn.Module):
         Args:
             hr_fake (torch.tensor): G(low_res)
             hr_real (torch.tensor): Labels
-            d_fake (torch.tensor): D(G(low_res))
-            d_real (torch.tensor): _description_
+            d_fake (torch.tensor): D(G(low_res)) (after sigmoid)
+            d_real (torch.tensor): D(real) (after sigmoid)
 
         Returns:
             d_loss: Discriminator loss
         """
 
-        d_loss_real = torch.mean(F.binary_cross_entropy_with_logits(d_real, torch.ones_like(d_real)), dim=0)
-        d_loss_fake = torch.mean(F.binary_cross_entropy_with_logits(d_fake, torch.zeros_like(d_fake)), dim=0)
+        d_loss_real = torch.mean(F.binary_cross_entropy(d_real, torch.ones_like(d_real)), dim=0)
+        d_loss_fake = torch.mean(F.binary_cross_entropy(d_fake, torch.zeros_like(d_fake)), dim=0)
         d_loss = d_loss_real + d_loss_fake 
         return d_loss
 
@@ -129,7 +129,7 @@ class FeatureNetwork(torch.nn.Module):
 
         # Hook function (nested so that self can be used but isn't in function's signature)
         def hook_fn(module, input, output):
-            self.features['vgg'] = output.detach()
+            self.features['feats'] = output.detach()
 
         # Register hook
         idx = self.preset["layeridx"]
