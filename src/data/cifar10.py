@@ -1,7 +1,7 @@
 import torch
 import torchvision
 import torchvision.transforms as transforms
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, ConcatDataset
 from overrides import override
 
 from .dataset_interface import TaskDataset
@@ -33,14 +33,12 @@ class CIFAR10(Dataset):
 class CIFAR10Dataset(TaskDataset):
     def __init__(self, root_dir, blur_kernel_size, sigma, size, batch_size=32, num_workers=8):
         super().__init__(root_dir, blur_kernel_size, sigma, size, batch_size, num_workers)
-        self.load_dataset()
+        self.loadDataset()
 
     @override
-    def load_dataset(self):
-        self.train_dataset = CIFAR10(root=self.root_dir,download=True,train=True,transform=self.transform)
-        self.train_loader = torch.utils.data.DataLoader(self.train_dataset,batch_size=self.batch_size,shuffle=True,
-                                                       num_workers=self.num_workers)
-        self.test_dataset = CIFAR10(root=self.root_dir,download=True, train=False, transform=self.transform)
-        self.test_loader = torch.utils.data.DataLoader(self.test_dataset, batch_size=self.batch_size,shuffle=False,
-                                                       num_workers=self.num_workers)
-    
+    def loadDataset(self):
+        """ Pytorch provides CIFAR10 as separate training/testing sets, combine into a single set
+        """
+        train_dataset = CIFAR10(root=self.root_dir,download=True,train=True,transform=self.transform)
+        test_dataset = CIFAR10(root=self.root_dir,download=True, train=False, transform=self.transform)
+        self.dataset = ConcatDataset([train_dataset, test_dataset])

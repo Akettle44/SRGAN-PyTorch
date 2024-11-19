@@ -2,10 +2,7 @@ import os
 import pytest
 import torch
 from src.data.cifar10 import CIFAR10Dataset
-
-import matplotlib.pyplot as plt
-import torchvision.transforms as transforms
-
+from torch.utils.data import DataLoader
 
 @pytest.mark.usefixtures("setUp")
 class TestCIFAR10Dataset():
@@ -24,13 +21,27 @@ class TestCIFAR10Dataset():
         assert cifar10.blur_kernel_size == blur_kernel_size
         assert cifar10.sigma == sigma
         assert cifar10.size == size
-        assert cifar10.train_loader.batch_size == 32
-        assert cifar10.train_loader.num_workers == 8
-        assert cifar10.train_dataset is not None
-        assert cifar10.train_loader is not None
-        assert cifar10.test_dataset is not None
-        assert cifar10.test_loader is not None
+        assert cifar10.batch_size == 32
+        assert cifar10.num_workers == 8
     
+    def testDatasetSplits(self):
+        root_dir = os.getcwd()
+        blur_kernel_size = (5,9)
+        sigma = (0.1,5.)
+        size = 100
+        batch_size = 32
+        num_workers = 8
+
+        cifar10 = CIFAR10Dataset(root_dir, blur_kernel_size, sigma, size, batch_size, num_workers)
+        cifar10.createDataloaders(cifar10.batch_size, cifar10.num_workers, [0.5,0.3,0.2])
+
+        assert len(cifar10.train_dataset) == 30000
+        assert len(cifar10.val_dataset) == 18000
+        assert len(cifar10.test_dataset) == 12000
+        assert isinstance(cifar10.train_loader, DataLoader)
+        assert isinstance(cifar10.val_loader, DataLoader)
+        assert isinstance(cifar10.test_loader, DataLoader)
+
     def testGaussian(self):
         root_dir = os.getcwd()
         blur_kernel_size = (5,9)
@@ -38,6 +49,7 @@ class TestCIFAR10Dataset():
         size = 32
 
         cifar10 = CIFAR10Dataset(root_dir, blur_kernel_size, sigma, size)
+        cifar10.createDataloaders(cifar10.batch_size, cifar10.num_workers, [0.5,0.3,0.2])
         image, label = cifar10.train_dataset[100]
         pixel_diff = int(torch.sum(torch.abs(torch.flatten(image) - torch.flatten(label))))
         assert pixel_diff < 500
@@ -51,11 +63,14 @@ class TestCIFAR10Dataset():
         num_workers = 2
 
         cifar10 = CIFAR10Dataset(root_dir, blur_kernel_size, sigma, size, batch_size, num_workers)
+        cifar10.createDataloaders(cifar10.batch_size, cifar10.num_workers, [0.5,0.3,0.2])
         image, label = cifar10.train_dataset[100]
 
         assert len(image[0]) == size
         assert len(image[0][0]) == size
 
+        # import matplotlib.pyplot as plt
+        # import torchvision.transforms as transforms
         # mean = [0.5, 0.5, 0.5]
         # std = [0.5, 0.5, 0.5]
         # denormalize = transforms.Normalize(
