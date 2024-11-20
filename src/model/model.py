@@ -125,11 +125,11 @@ class Discriminator(nn.Module):
         # k3n256s2
         self.block6 = DisBlock(256, 1, 2)
         # k3n512s1
-        self.block6 = DisBlock(256, 2, 1)
+        self.block7 = DisBlock(256, 2, 1)
         # k3n512s2
-        self.block7 = DisBlock(512, 1, 2)
+        self.block8= DisBlock(512, 1, 2)
 
-        self.block8 = nn.Sequential(
+        self.block9 = nn.Sequential(
             # Maybe this is wrong
             nn.Linear(512, 1024),
             nn.LeakyReLU(0.2),
@@ -145,5 +145,6 @@ class Discriminator(nn.Module):
         x = self.block6(x)
         x = self.block7(x)
         x = self.block8(x)
+        x = self.block9(x)
 
         return torch.sigmoid(x)
