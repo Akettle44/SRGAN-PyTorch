@@ -1,0 +1,7 @@
+epochs=5$i
+lr=2e-5$f
+dropout=0.4$f
+freezeLayers=[6,7,8,9,10]$l
+trbatch=8$i
+valbatch=8$i
+numworkers=8$i
