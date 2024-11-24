@@ -25,7 +25,7 @@ class TestImageNetDataset():
         assert imagenet.sigma == sigma
         assert imagenet.batch_size == 32
         assert imagenet.num_workers == 8
-        assert len(imagenet.dataset) == 1300
+        assert len(imagenet) == 1300
     
     def testDatasetSplits(self):
         """ Verifies that the dataset is correctly being
@@ -38,7 +38,7 @@ class TestImageNetDataset():
         num_workers = 8
 
         imagenet = ImageNetDataset(root_dir, blur_kernel_size, sigma, batch_size, num_workers)
-        imagenet.createDataloaders(imagenet.batch_size, imagenet.num_workers, [0.5,0.3,0.2])
+        imagenet.createDataloaders(imagenet.batch_size, imagenet.num_workers, [0.7,0.15,0.15])
 
         assert len(imagenet.train_dataset) == 650
         assert len(imagenet.val_dataset) == 390

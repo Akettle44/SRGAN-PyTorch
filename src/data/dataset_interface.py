@@ -3,7 +3,7 @@ import torchvision.transforms as transforms
 from abc import ABC, abstractmethod
 from torch.utils.data import random_split, DataLoader
 
-from src.utils.img_processing import Downsample
+from ..utils.img_processing import Downsample
 
 class TaskDataset(ABC):
     @abstractmethod
@@ -30,13 +30,7 @@ class TaskDataset(ABC):
                                         Downsample(),
                                        ])
         
-    @abstractmethod
-    def loadDataset(self):
-        """ Loads whole dataset
-        """
-        pass
-
-    def createDataloaders(self, batch_size, num_workers, train_val_test_split=[.5,.3,.2]):
+    def createDataloaders(self, batch_size, num_workers, train_val_test_split=[.7,.15,.15]):
         """ Splits dataset into training, validation, and testing splits
             train_val_test_split: allocate fraction of dataset to training/validation/testing dataloader
         """

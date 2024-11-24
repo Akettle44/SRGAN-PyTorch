@@ -15,7 +15,7 @@ def train():
     root_dir = os.path.dirname(os.getcwd())
     model_dir = os.path.join(root_dir, 'models')
 
-    dataset_name = "imagenet"
+    dataset_name = "ImageNet"
 
     # Load Hyperparameters
     hyps = Utils.loadHypsFromDisk(os.path.join(os.path.join(model_dir, 'hyps'), dataset_name + '.txt'))
@@ -33,9 +33,13 @@ def train():
     num_workers = hyps["numworkers"]
 
     loadLocal = False
-    dataset = TaskFactory.createTaskDataSet(root_dir, blur_kernel_size, sigma, batch_size_train, num_workers)
+    dataset_dir = os.path.join(os.path.join(root_dir, "datasets"), dataset_name.lower())
+    dataset = TaskFactory.createTaskDataSet(dataset_name, dataset_dir, blur_kernel_size, sigma, batch_size_train, num_workers)
     dataset.createDataloaders(batch_size_train, num_workers)
 
+    print(len(dataset))
+
+    """
     trainer = PtTrainer(g, d, dataset)
     trainer.sendToDevice()
     trainer.setHyps(hyps)
@@ -52,6 +56,7 @@ def train():
     plt.ylabel("Loss")
     plt.legend()
     plt.savefig(os.path.join(save_path, "loss_plot.png"))
+    """
 
     # Plot loss results (show it decreases)
     """
@@ -101,5 +106,5 @@ def eval():
     # TODO: Evaluation
 
 if __name__ == "__main__":
-    #train()
-    eval()
+    train()
+    #eval()

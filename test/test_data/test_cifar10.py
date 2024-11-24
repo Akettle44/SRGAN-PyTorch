@@ -26,7 +26,7 @@ class TestCIFAR10Dataset():
         assert cifar10.sigma == sigma
         assert cifar10.batch_size == 32
         assert cifar10.num_workers == 8
-        assert len(cifar10.dataset) == 60000
+        assert len(cifar10.dataset) == 50000
     
     def testDatasetSplits(self):
         """ Verifies that the dataset is correctly being
@@ -39,11 +39,11 @@ class TestCIFAR10Dataset():
         num_workers = 8
 
         cifar10 = CIFAR10Dataset(root_dir, blur_kernel_size, sigma, batch_size, num_workers)
-        cifar10.createDataloaders(cifar10.batch_size, cifar10.num_workers, [0.5,0.3,0.2])
+        cifar10.createDataloaders(cifar10.batch_size, cifar10.num_workers)
 
-        assert len(cifar10.train_dataset) == 30000
-        assert len(cifar10.val_dataset) == 18000
-        assert len(cifar10.test_dataset) == 12000
+        assert len(cifar10.train_dataset) == 35000
+        assert len(cifar10.val_dataset) == 7500
+        assert len(cifar10.test_dataset) == 7500
         assert isinstance(cifar10.train_loader, DataLoader)
         assert isinstance(cifar10.val_loader, DataLoader)
         assert isinstance(cifar10.test_loader, DataLoader)
@@ -60,10 +60,13 @@ class TestCIFAR10Dataset():
         num_workers = 8
 
         cifar10 = CIFAR10Dataset(root_dir, blur_kernel_size, sigma, batch_size, num_workers)
-        image, label = cifar10.dataset[100]
+        image, label = cifar10[100]
 
-        assert len(image[0]) == len(label[0])//4
-        assert len(image[0][0]) == len(label[0][0])//4
+        _, iw, ih = image.shape
+        _, lw, lh = label.shape
+
+        assert iw == lw // 4
+        assert ih == lh // 4
 
         mean = [0.5, 0.5, 0.5]
         std = [0.5, 0.5, 0.5]
