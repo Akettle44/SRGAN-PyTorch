@@ -12,7 +12,7 @@ class TestImageNetDataset():
     def testInit(self):
         """ Verify that the dataset initiates properly
         """
-        root_dir = os.path.join(os.getcwd(), "datasets/imagenet")
+        root_dir = os.path.join(os.getcwd(), "datasets/imagenet_test")
         blur_kernel_size = (5,9)
         sigma = (0.1,5.)
         batch_size = 32
@@ -31,7 +31,7 @@ class TestImageNetDataset():
         """ Verifies that the dataset is correctly being
             split into training/validation/testing sets
         """
-        root_dir = os.path.join(os.getcwd(), "datasets/imagenet")
+        root_dir = os.path.join(os.getcwd(), "datasets/imagenet_test")
         blur_kernel_size = (5,9)
         sigma = (0.1,5.)
         batch_size = 32
@@ -52,7 +52,7 @@ class TestImageNetDataset():
             downsampled using Gaussian blurring and bicubic 
             interpolation
         """
-        root_dir = os.path.join(os.getcwd(), "datasets/imagenet")
+        root_dir = os.path.join(os.getcwd(), "datasets/imagenet_test")
         blur_kernel_size = (5,9)
         sigma = (0.1,1.5)
         batch_size = 4
