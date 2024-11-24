@@ -3,7 +3,7 @@ import torch
 from .model import Generator, Discriminator
 from utils.utils import Utils
 
-def saveModelToDisk(generator, discriminator, root_dir, run_number):
+def saveModelToDisk(generator, discriminator, root_dir, model_name):
     """ Save the GAN model to disk
 
     Args:
@@ -11,9 +11,10 @@ def saveModelToDisk(generator, discriminator, root_dir, run_number):
         discriminator (pytorch nn.module): discriminator
         model_dir (str): Directory to save model to
         run_number (int): Unique number to save the run files to
+        model_name (str): Name for the model folder on disk
     """
 
-    model_dir = os.path.join(os.path.join(root_dir, "models"), f"run{run_number}")
+    model_dir = os.path.join(os.path.join(root_dir, "models"), model_name)
     if( not os.path.exists(model_dir)):
         os.mkdir(model_dir)
 
