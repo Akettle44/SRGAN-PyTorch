@@ -1,7 +1,7 @@
 import os
 import torch
 from .model import Generator, Discriminator
-from utils.utils import Utils
+from .utils import Utils
 
 def saveModelToDisk(generator, discriminator, root_dir, model_name):
     """ Save the GAN model to disk
