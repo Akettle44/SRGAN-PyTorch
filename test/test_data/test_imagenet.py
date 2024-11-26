@@ -61,9 +61,7 @@ class TestImageNetDataset():
         num_workers = 2
 
         imagenet = ImageNetDataset(root_dir, blur_kernel_size, sigma, batch_size, num_workers)
-        image, label = imagenet.dataset[1]
-
-        image.show()
+        image, label = imagenet[1]
 
         # Verify downsampling occured
         _, iw, ih = image.shape
