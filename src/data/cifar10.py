@@ -2,24 +2,27 @@
 import torchvision
 import torch
 import torchvision.transforms as transforms
-from torch.utils.data import Dataset, DataLoader, random_split
+import matplotlib.pyplot as plt
 
+from torch.utils.data import Dataset, random_split
 from overrides import override
 from .dataset_interface import TaskDataset
 from copy import deepcopy
+from ..utils.img_processing import Downsample
 
 class CIFAR10Dataset(Dataset, TaskDataset):
 
     @override
     def __init__(self, root_dir, blur_kernel_size, sigma, batch_size=32, num_workers=8, train=True,
-                            download=True, transform=None, do_transform=False):
+                            download=True):
 
         # Rely on Python's MRO to do intilialization
         super().__init__(root_dir, blur_kernel_size, sigma, batch_size, num_workers)
 
-        self.dataset = torchvision.datasets.CIFAR10(root=root_dir, train=train, download=download, transform=None)
-        self.do_transform = do_transform
-        self.image_transform = transform
+        self.dataset = torchvision.datasets.CIFAR10(root=root_dir, train=train, download=download)
+        # Perform gaussian blurring and downsampling (defined in dataset intereface because all methods use it)
+        self.image_transform = self.downsample
+        # Normalize to [-1, 1]
         self.label_transform = transforms.Compose([transforms.ToTensor(), 
                                                 transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))])
 
@@ -37,14 +40,10 @@ class CIFAR10Dataset(Dataset, TaskDataset):
         # Read in image (label not needed for our task)
         img, _ = self.dataset[index]
 
-        # Perform image transform if necessary
-        if self.do_transform:
-            ret_img = self.image_transform(img)
-        else:
-            # Convert to tensor regardless
-            ret_img = transforms.functional.pil_to_tensor(img)
+        # Create downsampled image
+        ret_img = self.image_transform(img)
 
-        # Always perform label transform
+        # Normalize label image
         label = self.label_transform(img)
 
         return ret_img, label

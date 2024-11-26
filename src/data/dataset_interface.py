@@ -25,7 +25,7 @@ class TaskDataset(ABC):
         self.test_dataset = None
         self.test_loader = None
 
-        self.transform = transforms.Compose([transforms.ToTensor(),
+        self.downsample = transforms.Compose([transforms.ToTensor(),
                                         transforms.GaussianBlur(kernel_size=self.blur_kernel_size, sigma=self.sigma),
                                         Downsample(),
                                        ])

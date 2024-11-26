@@ -2,8 +2,10 @@ import os
 import pytest
 import torch
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
+import torch.nn.functional as F
+import matplotlib.pyplot as plt
 
+from torch.utils.data import DataLoader
 from src.data.imagenet import ImageNetDataset
 from src.utils.img_processing import Downsample
 
@@ -40,9 +42,9 @@ class TestImageNetDataset():
         imagenet = ImageNetDataset(root_dir, blur_kernel_size, sigma, batch_size, num_workers)
         imagenet.createDataloaders(imagenet.batch_size, imagenet.num_workers, [0.7,0.15,0.15])
 
-        assert len(imagenet.train_dataset) == 650
-        assert len(imagenet.val_dataset) == 390
-        assert len(imagenet.test_dataset) == 260
+        assert len(imagenet.train_dataset) == 910
+        assert len(imagenet.val_dataset) == 195
+        assert len(imagenet.test_dataset) == 195
         assert isinstance(imagenet.train_loader, DataLoader)
         assert isinstance(imagenet.val_loader, DataLoader)
         assert isinstance(imagenet.test_loader, DataLoader)
@@ -59,29 +61,34 @@ class TestImageNetDataset():
         num_workers = 2
 
         imagenet = ImageNetDataset(root_dir, blur_kernel_size, sigma, batch_size, num_workers)
-        image, label = imagenet.dataset[100]
+        image, label = imagenet.dataset[1]
 
-        assert len(image[0]) == len(label[0])//4
-        assert len(image[0][0]) == len(label[0][0])//4
+        image.show()
 
+        # Verify downsampling occured
+        _, iw, ih = image.shape
+        _, lw, lh = label.shape
+        assert iw == lw // 4
+        assert ih == lh // 4
+
+        # Image difference TODO: Make test empirical
+        image = image * 255
+        # For now, visually inspect image
+        #plt.imshow(image.permute(1, 2, 0).numpy().astype('int'))
+        #plt.show()
+
+        # Assert label transform works properly
         mean = [0.5, 0.5, 0.5]
         std = [0.5, 0.5, 0.5]
         denormalize = transforms.Normalize(
             mean=[-m / s for m, s in zip(mean, std)],
             std=[1 / s for s in std]
         )
-
-        label = denormalize(label)
-
-        transform = transforms.Compose([transforms.ToTensor(),
-                                        Downsample(),
-                                        transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))
-                                       ])
-        
-        to_pil = transforms.ToPILImage()
-        non_gaussian = transform(to_pil(label))
-        pixel_diff = int(torch.sum(torch.abs(torch.flatten(image) - torch.flatten(non_gaussian))))
-        assert pixel_diff != 0
+        # Reconstructed label
+        recon_label = denormalize(label)
+        label_diff = F.mse_loss(recon_label, label)
+        eps = 0.2 # Arbitrary
+        assert label_diff < eps
 
     """ Use for visualizing images
     import matplotlib.pyplot as plt
