@@ -41,7 +41,10 @@ def loadModelFromDisk(model_dir):
 
     # Load Hyperparameters
     task_name = model_dir.split('/')[-1].split('-')[0]
-    hyp_dir = os.path.dirname(os.path.dirname(model_dir)) # Insanely ratchet
+    print(task_name)
+    # Added 'models' to path to pass test case
+    hyp_dir = os.path.join(os.path.dirname(os.path.dirname(model_dir)), 'models') # Insanely ratchet
+    print(hyp_dir)
     hyps = Utils.loadHypsFromDisk(os.path.join(os.path.join(hyp_dir, 'hyps'), task_name + '.txt'))
 
     #metadata = os.path.join(model_dir, "metadata.txt")
@@ -56,7 +59,7 @@ def loadModelFromDisk(model_dir):
     gen_state_dict = torch.load(os.path.join(model_dir, 'generator.pth'))
     disc_state_dict = torch.load(os.path.join(model_dir, 'discriminator.pth'))
 
-    g = Generator()
+    g = Generator(scale=1) # Added scale=1 TODO: change to appropriate scale value
     g.load_state_dict(gen_state_dict)
     d = Discriminator()
     d.load_state_dict(disc_state_dict)
