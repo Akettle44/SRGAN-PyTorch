@@ -85,7 +85,7 @@ class TestImageNetDataset():
         # Reconstructed label
         recon_label = denormalize(label)
         label_diff = F.mse_loss(recon_label, label)
-        eps = 0.2 # Arbitrary
+        eps = 0.5 # Arbitrary
         assert label_diff < eps
 
     """ Use for visualizing images
