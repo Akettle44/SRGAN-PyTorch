@@ -2,19 +2,20 @@
 
 import torch
 from tqdm import tqdm
-from model.model import Generator, Discriminator
-from model.loss import PerceptualLoss
+from src.model.loss import PerceptualLoss
 
 class PtTrainer():
 
-    def __init__(self, generator, discriminator, dataset):
+    def __init__(self, generator, discriminator, dataset, g_optimizer=None, d_optimizer=None):
         self.generator = generator
         self.discriminator = discriminator
         self.dataset = dataset
+        self.g_optimizer = g_optimizer
+        self.d_optimizer = d_optimizer
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.hyps = {}
 
-        if self.optimizer is None:
+        if self.g_optimizer is None and self.d_optimizer is None:
             self.setDefaultOptimizer()
 
     def setDefaultOptimizer(self):
