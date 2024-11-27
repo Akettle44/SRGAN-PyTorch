@@ -56,8 +56,6 @@ class DisBlock(nn.Module):
         x = self.lekrelu(x)
 
         return x
-    
-
 
 class Generator(nn.Module):
     def __init__(self, scale):
@@ -78,7 +76,7 @@ class Generator(nn.Module):
             nn.Conv2d(64, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64)
         )
-        # do element-wise sum before passing into block 10
+        # do element-wise sum before passing into block 10 (in forward)
 
         self.block10 = SubPixel(64, scale)
         self.block11 = SubPixel(64, scale)

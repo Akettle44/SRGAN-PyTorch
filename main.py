@@ -43,18 +43,20 @@ def train():
     val_loader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=False, num_workers=num_workers)
     test_loader = DataLoader(test_dataset, batch_size=batch_size_val, shuffle=False, num_workers=num_workers)
 
-    """
     # Model
     g = Generator(hyps['scale'])
     d = Discriminator()
     model_name = 'gan-01'
     
-    trainer = PtTrainer(g, d, dataset)
+    loaders = [train_loader, val_loader, test_loader]
+    trainer = PtTrainer(g, d, loaders)
     trainer.sendToDevice()
     trainer.setHyps(hyps)
     trainer.updateOptimizerLr()
     tr_loss, tr_acc, val_loss, val_acc = trainer.fineTune()
     saveModelToDisk(trainer.generator, trainer.discriminator, root_dir, model_name)
+
+    """
     
     # Plot loss results (show it decreases)
     save_path = os.path.join(root_dir, "models/" + model_name)

@@ -6,10 +6,13 @@ from src.model.loss import PerceptualLoss
 
 class PtTrainer():
 
-    def __init__(self, generator, discriminator, dataset, g_optimizer=None, d_optimizer=None):
+    def __init__(self, generator, discriminator, loaders, g_optimizer=None, d_optimizer=None):
         self.generator = generator
         self.discriminator = discriminator
-        self.dataset = dataset
+        # TODO: Clean up
+        self.train_loader = loaders[0]
+        self.val_loader = loaders[1]
+        self.test_loader = loaders[2]
         self.g_optimizer = g_optimizer
         self.d_optimizer = d_optimizer
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -43,8 +46,8 @@ class PtTrainer():
     def sendToDevice(self):
         """ Places objects on correct device prior to training
         """
-        self.generator.to(self.device)
-        self.discriminator.to(self.device)
+        self.generator = self.generator.to(self.device)
+        self.discriminator = self.discriminator.to(self.device)
 
     def setHyps(self, hyps):
         """ Grab all hyperparameters and their associated value
@@ -54,10 +57,6 @@ class PtTrainer():
 
     def fineTune(self):
         
-        # Unpack dataset
-        train_loader = self.dataset.train_loader
-        val_loader = self.dataset.val_loader
-
         # Loss
         loss = PerceptualLoss()
 
@@ -78,17 +77,17 @@ class PtTrainer():
             #train_batch_accs = []
             
             # One iteration over dataset
-            for batch in tqdm(train_loader):
+            for batch in tqdm(self.train_loader):
 
-                # Images, labels                
+                # Images, labels to device               
                 images, labels = batch
-                images.to(self.device)
-                labels.to(self.device)
+                images = images.to(self.device)
+                labels = labels.to(self.device)
 
                 # Forward pass
                 gens = self.generator(images)
-                d_fake = self.discriminator(labels)
-                d_real = self.discriminator(gens)
+                d_fake = self.discriminator(gens)
+                d_real = self.discriminator(labels)
 
                 # Compute loss
                 d_loss, g_loss = loss(gens, labels, d_fake, d_real)
@@ -121,7 +120,7 @@ class PtTrainer():
 
             with torch.no_grad():
                 # Perform validation
-                for batch in tqdm(val_loader):
+                for batch in tqdm(self.val_loader):
 
                     # Images, labels                
                     images, labels = batch
