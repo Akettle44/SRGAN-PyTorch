@@ -1,10 +1,12 @@
 import torch
+import math
 from torch import nn
-
 
 class ResidualBlock(nn.Module):
     '''
     This is Residuel Block in the Generator Network
+    Note that spatial depth is maintained with padding, 
+    this is essential for the residual layers
     '''
     def __init__(self, channel):
         super(ResidualBlock, self).__init__()
@@ -23,23 +25,6 @@ class ResidualBlock(nn.Module):
         
         return x + output
 
-class SubPixel(nn.Module):
-    '''
-    These are 2 subpixel blocks after skip connection in Generator
-    '''
-    def __init__(self, channel_in, scale):
-        super(SubPixel, self).__init__()
-        self.conv = nn.Conv2d(channel_in, channel_in * scale, kernel_size=3, padding=1)
-        self.pixshuff = nn.PixelShuffle(scale)
-        self.perlu = nn.PReLU()
-
-    def forward(self, x):
-        x = self.conv(x)
-        x = self.pixshuff(x)
-        x = self.perlu(x)
-
-        return x
-
 class DisBlock(nn.Module):
     '''
     This is the main structure in Discriminator network
@@ -57,7 +42,29 @@ class DisBlock(nn.Module):
 
         return x
 
+class SubPixel(nn.Module):
+    '''
+    Upsample the image spatially
+    For scale factor = r, conv (c_in, c_out r**2)
+    Reshape output of conv to shape: (c_in, h * r, w * r)
+    '''
+    def __init__(self, channel_in, scale):
+        super(SubPixel, self).__init__()
+        self.up_scale = int(math.sqrt(scale))
+        self.conv = nn.Conv2d(channel_in, channel_in * self.up_scale**2, kernel_size=3, padding=1)
+        self.pixshuff = nn.PixelShuffle(self.up_scale)
+        self.perlu = nn.PReLU()
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.pixshuff(x)
+        x = self.perlu(x)
+        return x
+
 class Generator(nn.Module):
+    '''
+    SRGAN Generator
+    '''
     def __init__(self, scale):
         super(Generator, self).__init__()
 
@@ -92,6 +99,7 @@ class Generator(nn.Module):
         output = self.block7(output)
         output = self.block8(output)
         output = self.block9(output)
+        # Element wise concat
         output = self.block10(output + x)
         output = self.block11(output)
         output = self.block12(output)
@@ -101,11 +109,14 @@ class Generator(nn.Module):
         #######################################
         return output
 
-
-
-
 class Discriminator(nn.Module):
-    def __init__(self):
+    '''
+    SRGAN Discriminator
+    '''
+    def __init__(self, inp_h, inp_w):
+        self.inp_h = inp_h
+        self.inp_w = inp_w
+        # Input height and width used to determine FC-size
         super(Discriminator, self).__init__()
 
         self.block1 = nn.Sequential(
@@ -113,23 +124,25 @@ class Discriminator(nn.Module):
             nn.LeakyReLU()
         )
         # k3n64s2
-        self.block2 = DisBlock(64, 1, 2)
+        self.block2 = DisBlock(64, 2, 2)
         # k3n128s1
-        self.block3 = DisBlock(64, 2, 1)
+        self.block3 = DisBlock(128, 1, 1)
         # k3n128s2
-        self.block4 = DisBlock(128, 1, 2)
+        self.block4 = DisBlock(128, 2, 2)
         # k3n256s1
-        self.block5 = DisBlock(128, 2, 1)
+        self.block5 = DisBlock(256, 1, 1)
         # k3n256s2
-        self.block6 = DisBlock(256, 1, 2)
+        self.block6 = DisBlock(256, 2, 2)
         # k3n512s1
-        self.block7 = DisBlock(256, 2, 1)
+        self.block7 = DisBlock(512, 1, 1)
         # k3n512s2
         self.block8= DisBlock(512, 1, 2)
 
+        # FC layer mapping to prediction
         self.block9 = nn.Sequential(
-            # Maybe this is wrong
-            nn.Linear(512, 1024),
+            # Convs currently compress by 16, therefore scale 
+            # 512 by that to compensate
+            nn.Linear(1024 * (self.inp_h // 16) * (self.inp_w // 16), 1024),
             nn.LeakyReLU(0.2),
             nn.Linear(1024, 1)
         )
@@ -143,6 +156,6 @@ class Discriminator(nn.Module):
         x = self.block6(x)
         x = self.block7(x)
         x = self.block8(x)
-        x = self.block9(x)
+        x = self.block9(torch.flatten(x))
 
         return torch.sigmoid(x)

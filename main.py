@@ -45,7 +45,7 @@ def train():
 
     # Model
     g = Generator(hyps['scale'])
-    d = Discriminator()
+    d = Discriminator(96, 96)
     model_name = 'gan-01'
     
     loaders = [train_loader, val_loader, test_loader]

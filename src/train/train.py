@@ -3,6 +3,7 @@
 import torch
 from tqdm import tqdm
 from src.model.loss import PerceptualLoss
+from torchsummary import summary
 
 class PtTrainer():
 
@@ -59,6 +60,9 @@ class PtTrainer():
         
         # Loss
         loss = PerceptualLoss()
+
+        #summary(self.generator, (3, 96, 96))
+        #summary(self.discriminator, (3, 96, 96))
 
         # TODO: Accuracy not implemented yet
         train_loss = []
