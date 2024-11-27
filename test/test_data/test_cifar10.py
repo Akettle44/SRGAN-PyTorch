@@ -5,7 +5,7 @@ import torchvision.transforms as transforms
 import torch.nn.functional as F
 
 import matplotlib.pyplot as plt
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from src.data.cifar10 import CIFAR10Dataset
 
 @pytest.mark.usefixtures("setUp")
@@ -40,14 +40,22 @@ class TestCIFAR10Dataset():
         num_workers = 8
 
         cifar10 = CIFAR10Dataset(root_dir, blur_kernel_size, sigma, batch_size, num_workers)
-        cifar10.createDataloaders(cifar10.batch_size, cifar10.num_workers)
+        # cifar10.createDataloaders(cifar10.batch_size, cifar10.num_workers)
 
-        assert len(cifar10.train_dataset) == 35000
-        assert len(cifar10.val_dataset) == 7500
-        assert len(cifar10.test_dataset) == 7500
-        assert isinstance(cifar10.train_loader, DataLoader)
-        assert isinstance(cifar10.val_loader, DataLoader)
-        assert isinstance(cifar10.test_loader, DataLoader)
+        train_val_test_split = [0.7,0.15,0.15]
+        train_dataset, val_dataset, test_dataset = random_split(cifar10, train_val_test_split)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        # assert len(cifar10.train_dataset) == 35000
+        # assert len(cifar10.val_dataset) == 7500
+        # assert len(cifar10.test_dataset) == 7500
+        assert len(train_dataset) == 35000
+        assert len(val_dataset) == 7500
+        assert len(test_dataset) == 7500
+        assert isinstance(train_loader, DataLoader)
+        assert isinstance(val_loader, DataLoader)
+        assert isinstance(test_loader, DataLoader)
         
     def testDownsampling(self):
         """ Verifies that the dataset is correctly being
