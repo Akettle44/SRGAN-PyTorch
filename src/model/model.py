@@ -142,7 +142,7 @@ class Discriminator(nn.Module):
         self.block9 = nn.Sequential(
             # Convs currently compress by 16, therefore scale 
             # 512 by that to compensate
-            nn.Linear(1024 * (self.inp_h // 16) * (self.inp_w // 16), 1024),
+            nn.Linear(512 * (self.inp_h // 16) * (self.inp_w // 16), 1024),
             nn.LeakyReLU(0.2),
             nn.Linear(1024, 1)
         )
@@ -156,6 +156,7 @@ class Discriminator(nn.Module):
         x = self.block6(x)
         x = self.block7(x)
         x = self.block8(x)
-        x = self.block9(torch.flatten(x))
+        # Flatten everything after batch
+        x = self.block9(torch.reshape(x, (x.shape[0], -1)))
 
         return torch.sigmoid(x)

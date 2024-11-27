@@ -61,7 +61,7 @@ class PtTrainer():
         # Loss
         loss = PerceptualLoss()
 
-        #summary(self.generator, (3, 96, 96))
+        #summary(self.generator, (3, 24, 24))
         #summary(self.discriminator, (3, 96, 96))
 
         # TODO: Accuracy not implemented yet
@@ -88,8 +88,11 @@ class PtTrainer():
                 images = images.to(self.device)
                 labels = labels.to(self.device)
 
+                print(images.shape, labels.shape)
+
                 # Forward pass
                 gens = self.generator(images)
+                print(gens.shape)
                 d_fake = self.discriminator(gens)
                 d_real = self.discriminator(labels)
 

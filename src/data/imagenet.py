@@ -33,7 +33,7 @@ class ImageNetDataset(Dataset):
         self.image_transform = transforms.Compose([
                                         transforms.GaussianBlur(kernel_size=self.blur_kernel_size, sigma=self.sigma),
                                         Downsample(),
-                                        transforms.Resize(size=(96,96))
+                                        #transforms.Resize(size=(24,24))
                                        ])
         # Normalize to [-1, 1]
         self.label_transform = transforms.Compose([transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))])
