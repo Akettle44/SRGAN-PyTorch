@@ -30,14 +30,17 @@ class ImageNetDataset(Dataset):
         self.class_dirs = root_dir
         self.dataset = torchvision.datasets.ImageFolder(root=self.class_dirs)
         # Perform gaussian blurring and downsampling (defined in dataset intereface because all methods use it)
-        self.image_transform = transforms.Compose([transforms.ToTensor(),
+        self.image_transform = transforms.Compose([
                                         transforms.GaussianBlur(kernel_size=self.blur_kernel_size, sigma=self.sigma),
                                         Downsample(),
+                                        transforms.Resize(size=(96,96))
                                        ])
         # Normalize to [-1, 1]
-        self.label_transform = transforms.Compose([transforms.ToTensor(),
-                                                transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))
-                                                ])
+        self.label_transform = transforms.Compose([transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))])
+
+        # Use before image_transform and label transform
+        self.crop_transform = transforms.Compose([transforms.ToTensor(),
+                                                transforms.RandomCrop(size=(96,96),pad_if_needed=True, padding=0)])
     def __len__(self):
         # Count the number of images in imagenet folder
         return len(self.dataset)
@@ -50,10 +53,13 @@ class ImageNetDataset(Dataset):
         # Read in image (label not needed for our task)
         img, _ = self.dataset[index]
 
+        # Perform random crop on images
+        img_crop = self.crop_transform(img)
+
         # Create downsampled image
-        ret_img = self.image_transform(img)
+        ret_img = self.image_transform(img_crop)
 
         # Normalize label image
-        label = self.label_transform(img)
+        label = self.label_transform(img_crop)
 
         return ret_img, label

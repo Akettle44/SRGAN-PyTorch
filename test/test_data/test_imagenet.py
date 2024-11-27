@@ -61,13 +61,13 @@ class TestImageNetDataset():
         num_workers = 2
 
         imagenet = ImageNetDataset(root_dir, blur_kernel_size, sigma, batch_size, num_workers)
-        image, label = imagenet[1]
+        image, label = imagenet[1061]
 
         # Verify downsampling occured
         _, iw, ih = image.shape
         _, lw, lh = label.shape
-        assert iw == lw // 4
-        assert ih == lh // 4
+        assert iw == 96
+        assert ih == 96
 
         # Image difference TODO: Make test empirical
         image = image * 255
@@ -88,34 +88,33 @@ class TestImageNetDataset():
         eps = 0.5 # Arbitrary
         assert label_diff < eps
 
-    """ Use for visualizing images
-    import matplotlib.pyplot as plt
-    import torchvision.transforms as transforms
-    mean = [0.5, 0.5, 0.5]
-    std = [0.5, 0.5, 0.5]
-    denormalize = transforms.Normalize(
-        mean=[-m / s for m, s in zip(mean, std)],
-        std=[1 / s for s in std]
-    )
+        """
+        #Use for visualizing images
+        mean = [0.5, 0.5, 0.5]
+        std = [0.5, 0.5, 0.5]
+        denormalize = transforms.Normalize(
+            mean=[-m / s for m, s in zip(mean, std)],
+            std=[1 / s for s in std]
+        )
 
-    label = denormalize(label)
+        label = denormalize(label)
 
-    to_pil = transforms.ToPILImage()
+        to_pil = transforms.ToPILImage()
 
-    image_pil = to_pil(image)
-    label_pil = to_pil(label)
+        image_pil = to_pil(image)
+        label_pil = to_pil(label)
 
-    plt.figure(figsize=(8, 4))
+        plt.figure(figsize=(8, 4))
 
-    plt.subplot(1, 2, 1)
-    plt.imshow(image_pil)
-    plt.title("Image")
-    plt.axis("off")
-    
-    plt.subplot(1, 2, 2)
-    plt.imshow(label_pil)
-    plt.title("Label")
-    plt.axis("off")
+        plt.subplot(1, 2, 1)
+        plt.imshow(image_pil)
+        plt.title("Image")
+        plt.axis("off")
+        
+        plt.subplot(1, 2, 2)
+        plt.imshow(label_pil)
+        plt.title("Label")
+        plt.axis("off")
 
-    plt.show()
-    """
+        plt.show()
+        """
