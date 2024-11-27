@@ -5,6 +5,7 @@ import torchvision.transforms as transforms
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
+from torch import Tensor
 from torch.utils.data import DataLoader, random_split
 from src.data.imagenet import ImageNetDataset
 from src.utils.img_processing import Downsample
@@ -55,6 +56,36 @@ class TestImageNetDataset():
         assert isinstance(train_loader, DataLoader)
         assert isinstance(val_loader, DataLoader)
         assert isinstance(test_loader, DataLoader)
+
+        # Tests to ensure that images loaded from dataset, dataloader are Tensors
+        img_data, label_data = imagenet[0]
+        img_trainload = None
+        label_trainload = None
+        img_valload = None
+        label_valload = None
+        img_testload = None
+        label_testload = None
+        for img, label in train_loader:
+            img_trainload = img[0]
+            label_trainload = label[0]
+            break
+
+        for img, label in val_loader:
+            img_valload = img[0]
+            label_valload = label[0]
+
+        for img, label in test_loader:
+            img_testload = img[0]
+            label_testload = label[0]
+
+        assert isinstance(img_data, Tensor)
+        assert isinstance(label_data, Tensor)
+        assert isinstance(img_trainload, Tensor)
+        assert isinstance(label_trainload, Tensor)
+        assert isinstance(img_valload, Tensor)
+        assert isinstance(label_valload, Tensor)
+        assert isinstance(img_testload, Tensor)
+        assert isinstance(label_testload, Tensor)
 
     def testDownsampling(self):
         """ Verifies that the dataset is correctly being
