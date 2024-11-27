@@ -1,18 +1,19 @@
 import torch
 import os
 import matplotlib.pyplot as plt
-from data.factory import TaskFactory
-from data.imagenet import ImageNetDataset
-from model.model import Generator, Discriminator
-from train.train import PtTrainer
-from model.load_save import saveModelToDisk, loadModelFromDisk
-from utils.utils import Utils
+from torch.utils.data import random_split, DataLoader
+from src.data.imagenet import ImageNetDataset
+from src.data.cifar10 import CIFAR10Dataset
+from src.model.model import Generator, Discriminator
+from src.train.train import PtTrainer
+from src.model.load_save import saveModelToDisk, loadModelFromDisk
+from src.utils.utils import Utils
 
 # Trainer for models
 def train():
 
     # Paths
-    root_dir = os.path.dirname(os.getcwd())
+    root_dir = os.getcwd()
     model_dir = os.path.join(root_dir, 'models')
 
     dataset_name = "ImageNet"
@@ -20,10 +21,6 @@ def train():
     # Load Hyperparameters
     hyps = Utils.loadHypsFromDisk(os.path.join(os.path.join(model_dir, 'hyps'), dataset_name + '.txt'))
 
-    # Model
-    g = Generator(hyps['scale'])
-    d = Discriminator()
-    model_name = 'gan-01'
 
     # Dataset
     blur_kernel_size = (5,9)
@@ -32,14 +29,26 @@ def train():
     batch_size_val = hyps["valbatch"]
     num_workers = hyps["numworkers"]
 
-    loadLocal = False
+    # Create dataset
     dataset_dir = os.path.join(os.path.join(root_dir, "datasets"), dataset_name.lower())
-    dataset = TaskFactory.createTaskDataSet(dataset_name, dataset_dir, blur_kernel_size, sigma, batch_size_train, num_workers)
-    dataset.createDataloaders(batch_size_train, num_workers)
+    if dataset_name == "ImageNet":
+        dataset = ImageNetDataset(dataset_dir, blur_kernel_size, sigma, batch_size_train, num_workers)
+    elif dataset_name == "CIFAR10":
+        dataset = CIFAR10Dataset(dataset_dir, blur_kernel_size, sigma, batch_size_train, num_workers)
 
-    print(len(dataset))
+    # Create dataloaders
+    train_val_test_split = [.7,.15,.15]
+    train_dataset, val_dataset, test_dataset = random_split(dataset, train_val_test_split)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, num_workers=num_workers)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=False, num_workers=num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size_val, shuffle=False, num_workers=num_workers)
 
     """
+    # Model
+    g = Generator(hyps['scale'])
+    d = Discriminator()
+    model_name = 'gan-01'
+    
     trainer = PtTrainer(g, d, dataset)
     trainer.sendToDevice()
     trainer.setHyps(hyps)

@@ -10,18 +10,26 @@ from .dataset_interface import TaskDataset
 from copy import deepcopy
 from ..utils.img_processing import Downsample
 
-class CIFAR10Dataset(Dataset, TaskDataset):
+class CIFAR10Dataset(Dataset):
 
     @override
     def __init__(self, root_dir, blur_kernel_size, sigma, batch_size=32, num_workers=8, train=True,
                             download=True):
+        super().__init__()
 
-        # Rely on Python's MRO to do intilialization
-        super().__init__(root_dir, blur_kernel_size, sigma, batch_size, num_workers)
+        self.root_dir = root_dir
+        self.blur_kernel_size = blur_kernel_size
+        self.sigma = sigma
+        self.batch_size = batch_size
+        self.num_workers = num_workers
 
         self.dataset = torchvision.datasets.CIFAR10(root=root_dir, train=train, download=download)
         # Perform gaussian blurring and downsampling (defined in dataset intereface because all methods use it)
-        self.image_transform = self.downsample
+        self.image_transform = transforms.Compose([transforms.ToTensor(),
+                                        transforms.GaussianBlur(kernel_size=self.blur_kernel_size, sigma=self.sigma),
+                                        Downsample(),
+                                       ])
+        #
         # Normalize to [-1, 1]
         self.label_transform = transforms.Compose([transforms.ToTensor(), 
                                                 transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))])

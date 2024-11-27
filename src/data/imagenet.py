@@ -5,10 +5,9 @@ import torchvision.transforms as transforms
 import os
 from torch.utils.data import Dataset
 from overrides import override
+from src.utils.img_processing import Downsample
 
-from .dataset_interface import TaskDataset
-
-class ImageNetDataset(Dataset, TaskDataset):
+class ImageNetDataset(Dataset):
 
     """ Modifies ImageNet dataset where:
             images: downsampled images
@@ -19,13 +18,22 @@ class ImageNetDataset(Dataset, TaskDataset):
 
     @override
     def __init__(self, root_dir, blur_kernel_size, sigma, batch_size=32, num_workers=8):
-        # Rely on Python's MRO to do init
-        super().__init__(root_dir, blur_kernel_size, sigma, batch_size, num_workers)
+        
+        super().__init__()
+
+        self.root_dir = root_dir
+        self.blur_kernel_size = blur_kernel_size
+        self.sigma = sigma
+        self.batch_size = batch_size
+        self.num_workers = num_workers
 
         self.class_dirs = root_dir
         self.dataset = torchvision.datasets.ImageFolder(root=self.class_dirs)
         # Perform gaussian blurring and downsampling (defined in dataset intereface because all methods use it)
-        self.image_transform = self.downsample
+        self.image_transform = transforms.Compose([transforms.ToTensor(),
+                                        transforms.GaussianBlur(kernel_size=self.blur_kernel_size, sigma=self.sigma),
+                                        Downsample(),
+                                       ])
         # Normalize to [-1, 1]
         self.label_transform = transforms.Compose([transforms.ToTensor(),
                                                 transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))

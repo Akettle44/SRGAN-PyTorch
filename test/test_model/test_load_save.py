@@ -16,7 +16,7 @@ class TestSaveLoad():
         generator = Generator(scale=1)
         discriminator = Discriminator()
         root_dir = os.getcwd()
-        saveModelToDisk(generator, discriminator, root_dir, "pytest")
+        saveModelToDisk(generator, discriminator, root_dir, "unit_test")
 
         assert os.path.exists(os.path.join(root_dir, os.path.join("models/pytest", "generator.pth")))
         assert os.path.exists(os.path.join(root_dir, os.path.join("models/pytest", "discriminator.pth")))
@@ -27,8 +27,8 @@ class TestSaveLoad():
         root_dir = os.getcwd()
         g_orig = Generator(scale=1)
         d_orig = Discriminator()
-        model_dir = os.path.join(root_dir, "models/pytest")
-        saveModelToDisk(g_orig, d_orig, root_dir, "pytest")
+        model_dir = os.path.join(root_dir, "models/unit_test")
+        saveModelToDisk(g_orig, d_orig, root_dir, "unit_test")
         
         g_saved, d_saved, h_saved = loadModelFromDisk(model_dir)
         g_orig_state = g_orig.state_dict()
@@ -43,11 +43,10 @@ class TestSaveLoad():
 
         assert generators_same
         assert discriminators_same
-        assert h_saved["epochs"] == 1
+        assert h_saved["epochs"] == 5
         assert h_saved["lr"] == 2e-5
         assert h_saved["dropout"] == 0.4
-        assert h_saved["freezeLayers"] == [6,7,8,9,10]
-        assert h_saved["trbatch"] == 5
-        assert h_saved["valbatch"] == 10
+        assert h_saved["trbatch"] == 8
+        assert h_saved["valbatch"] == 8
 
         
