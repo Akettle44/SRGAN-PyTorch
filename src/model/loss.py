@@ -22,7 +22,8 @@ class PerceptualLoss(torch.nn.Module):
             d_loss, g_loss: Loss for discriminator and generator
         """
 
-        g_loss = self.GLoss(hr_fake, hr_real, d_fake)
+        # Using straight MSE for now
+        g_loss = self.GLoss(hr_fake, hr_real, d_fake, content_choice='feat')
         d_loss = self.DLoss(d_fake, d_real)
 
         return d_loss, g_loss
@@ -81,8 +82,8 @@ class PerceptualLoss(torch.nn.Module):
             d_loss: Discriminator loss
         """
 
-        d_loss_real = torch.mean(F.binary_cross_entropy(d_real, torch.ones_like(d_real)), dim=0)
-        d_loss_fake = torch.mean(F.binary_cross_entropy(d_fake, torch.zeros_like(d_fake)), dim=0)
+        d_loss_real = F.binary_cross_entropy(d_real, torch.ones_like(d_real))
+        d_loss_fake = F.binary_cross_entropy(d_fake, torch.zeros_like(d_fake))
         d_loss = d_loss_real + d_loss_fake 
         return d_loss
 
@@ -118,6 +119,7 @@ class FeatureNetwork(torch.nn.Module):
                 self.preset = {"name": "vgg19", "layeridx": 11}
                 self.model = torchvision.models.vgg19(pretrained=True)
                 self.model = self.model.to(self.device)
+                self.model.eval()
             case _:
                 raise(NotImplementedError)
 

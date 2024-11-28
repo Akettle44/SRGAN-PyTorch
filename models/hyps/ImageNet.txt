@@ -1,4 +1,4 @@
-epochs=5$i
+epochs=6$i
 scale=4$i
 lr=2e-5$f
 dropout=0.4$f

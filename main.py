@@ -21,7 +21,6 @@ def train():
     # Load Hyperparameters
     hyps = Utils.loadHypsFromDisk(os.path.join(os.path.join(model_dir, 'hyps'), dataset_name + '.txt'))
 
-
     # Dataset
     blur_kernel_size = (5,9)
     sigma = (0.1,1.5)
@@ -46,28 +45,27 @@ def train():
     # Model
     g = Generator(hyps['scale'])
     d = Discriminator(96, 96)
-    model_name = 'gan-01'
+    model_name = 'gan-03'
     
     loaders = [train_loader, val_loader, test_loader]
     trainer = PtTrainer(g, d, loaders)
     trainer.sendToDevice()
     trainer.setHyps(hyps)
     trainer.updateOptimizerLr()
-    tr_loss, tr_acc, val_loss, val_acc = trainer.fineTune()
+    tr_g, tr_d, val_g, val_d = trainer.fineTune()
     saveModelToDisk(trainer.generator, trainer.discriminator, root_dir, model_name)
 
-    """
-    
     # Plot loss results (show it decreases)
     save_path = os.path.join(root_dir, "models/" + model_name)
-    plt.plot(range(len(tr_loss)), tr_loss, label="Training Loss", color='blue')
-    plt.plot(range(len(val_loss)), val_loss, label="Validation Loss", color='orange')
+    plt.plot(range(len(tr_g)), tr_g, label="Training Loss Generator", color='blue')
+    plt.plot(range(len(tr_d)), tr_d, label="Training Loss Discriminator", color='orange')
+    plt.plot(range(len(val_g)), val_g, label="Validation Loss Generator", color='mediumseagreen')
+    plt.plot(range(len(val_d)), val_d, label="Validation Loss Discriminator", color='crimson')
     plt.title(f"Training curves for {model_name}")
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.legend()
     plt.savefig(os.path.join(save_path, "loss_plot.png"))
-    """
 
     # Plot loss results (show it decreases)
     """
