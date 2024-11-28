@@ -92,6 +92,7 @@ class FeatureNetwork(torch.nn.Module):
     def __init__(self, featureModelChoice):
         super(FeatureNetwork, self).__init__()
         # Select and load model
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.selectPresetAndLoad(featureModelChoice)
         self.features = {}
         self.registerHooks()
@@ -116,6 +117,7 @@ class FeatureNetwork(torch.nn.Module):
                 # at enumeration of sequential
                 self.preset = {"name": "vgg19", "layeridx": 11}
                 self.model = torchvision.models.vgg19(pretrained=True)
+                self.model = self.model.to(self.device)
             case _:
                 raise(NotImplementedError)
 

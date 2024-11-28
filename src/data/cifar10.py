@@ -1,46 +1,63 @@
 # This file provides the class for CIFAR10Dataset
 import torchvision
+import torch
 import torchvision.transforms as transforms
-from torch.utils.data import Dataset, ConcatDataset
+import matplotlib.pyplot as plt
+
+from torch.utils.data import Dataset, random_split
 from overrides import override
-
 from .dataset_interface import TaskDataset
+from copy import deepcopy
+from ..utils.img_processing import Downsample
 
-class CIFAR10Dataset(TaskDataset):
-    def __init__(self, root_dir, blur_kernel_size, sigma, batch_size=32, num_workers=8):
-        super().__init__(root_dir, blur_kernel_size, sigma, batch_size, num_workers)
-        self.loadDataset()
-
-    class CIFAR10(Dataset):
-        """ Modifies Torchvision's CIFAR10 dataset where:
-                images: downsampled images
-                labels: original images
-            Note: according to the paper, high-resolution images (labels) should be normalized to [-1,1],
-            while low-resolution images remain in range [0,1]
-        """
-        def __init__(self, root, train=True, download=True, transform=None):
-            self.cifar10 = torchvision.datasets.CIFAR10(root=root, train=train, download=download, transform=None)
-            self.image_transform = transform
-            self.label_transform = transforms.Compose([transforms.ToTensor(), 
-                                                    transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))
-                                                    ])
-        
-        def __len__(self):
-            return len(self.cifar10)
-        
-        def __getitem__(self, index):
-            original_img, _ = self.cifar10[index]
-            if self.image_transform:
-                transformed_img = self.image_transform(original_img)
-            else:
-                transformed_img = self.label_transform(original_img)
-
-            return transformed_img, self.label_transform(original_img)
+class CIFAR10Dataset(Dataset):
 
     @override
-    def loadDataset(self):
-        """ Pytorch provides CIFAR10 as separate training/testing sets, combine into a single set
-        """
-        train_dataset = self.CIFAR10(root=self.root_dir,download=True,train=True,transform=self.transform)
-        test_dataset = self.CIFAR10(root=self.root_dir,download=True, train=False, transform=self.transform)
-        self.dataset = ConcatDataset([train_dataset, test_dataset])
+    def __init__(self, root_dir, blur_kernel_size, sigma, batch_size=32, num_workers=8, train=True,
+                            download=True):
+        super().__init__()
+
+        self.root_dir = root_dir
+        self.blur_kernel_size = blur_kernel_size
+        self.sigma = sigma
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+
+        self.dataset = torchvision.datasets.CIFAR10(root=root_dir, train=train, download=download)
+        # Perform gaussian blurring and downsampling (defined in dataset intereface because all methods use it)
+        self.image_transform = transforms.Compose([
+                                        transforms.GaussianBlur(kernel_size=self.blur_kernel_size, sigma=self.sigma),
+                                        Downsample(),
+                                        transforms.Resize(size=(96,96))
+                                       ])
+        #
+        # Normalize to [-1, 1]
+        self.label_transform = transforms.Compose([transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))])
+
+        # Use before image_transform and label transform
+        self.crop_transform = transforms.Compose([transforms.ToTensor(),
+                                                transforms.RandomCrop(size=(96,96),pad_if_needed=True, padding=0)])
+    """ Modifies Torchvision's CIFAR10 dataset where:
+            images: downsampled images
+            labels: original images
+        Note: according to the paper, high-resolution images (labels) should be normalized to [-1,1],
+        while low-resolution images remain in range [0,1]
+    """
+
+    def __len__(self):
+        return len(self.dataset)
+    
+    def __getitem__(self, index):
+        # Read in image (label not needed for our task)
+        img, _ = self.dataset[index]
+
+        # Perform random crop on images
+        img_crop = self.crop_transform(img)
+
+        # Create downsampled image
+        ret_img = self.image_transform(img_crop)
+
+        # Normalize label image
+        label = self.label_transform(img_crop)
+
+        return ret_img, label
