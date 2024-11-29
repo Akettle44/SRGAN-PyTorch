@@ -32,20 +32,20 @@ def saveModelToDisk(generator, discriminator, root_dir, model_name):
         #f.write('Legend: num_classes, task_type \n')
         #f.write(f"{model.num_classes}, {model.task_type}")
 
-def loadModelFromDisk(model_dir):
+def loadModelFromDisk(model_dir, hyps):
     """ Load the model from disk locally
 
     Args:
         model_dir (str): path to model on disk
     """
-
+    
     # Load Hyperparameters
-    task_name = model_dir.split('/')[-1].split('-')[0]
-    print(task_name)
-    # Added 'models' to path to pass test case
-    hyp_dir = os.path.join(os.path.dirname(os.path.dirname(model_dir)), 'models') # Insanely ratchet
-    print(hyp_dir)
-    hyps = Utils.loadHypsFromDisk(os.path.join(os.path.join(hyp_dir, 'hyps'), task_name + '.txt'))
+    # task_name = model_dir.split('/')[-1].split('-')[0]
+    # print(task_name)
+    # # Added 'models' to path to pass test case
+    # hyp_dir = os.path.join(os.path.dirname(os.path.dirname(model_dir)), 'models') # Insanely ratchet
+    # print(hyp_dir)
+    # hyps = Utils.loadHypsFromDisk(os.path.join(os.path.join(hyp_dir, 'hyps'), task_name + '.txt'))
 
     #metadata = os.path.join(model_dir, "metadata.txt")
     #with open(metadata, 'r') as f:
@@ -59,9 +59,9 @@ def loadModelFromDisk(model_dir):
     gen_state_dict = torch.load(os.path.join(model_dir, 'generator.pth'))
     disc_state_dict = torch.load(os.path.join(model_dir, 'discriminator.pth'))
 
-    g = Generator(scale=1) # Added scale=1 TODO: change to appropriate scale value
+    g = Generator(hyps['scale']) # Added scale=1 TODO: change to appropriate scale value
     g.load_state_dict(gen_state_dict)
-    d = Discriminator()
+    d = Discriminator(96, 96)
     d.load_state_dict(disc_state_dict)
 
-    return g, d, hyps
+    return g, d

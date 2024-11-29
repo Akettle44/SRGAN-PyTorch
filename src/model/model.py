@@ -151,6 +151,7 @@ class Discriminator(nn.Module):
         )
 
     def forward(self, x):
+        batch_size = x.size(0)
         x = self.block1(x)
         x = self.block2(x)
         x = self.block3(x)
@@ -165,6 +166,6 @@ class Discriminator(nn.Module):
         #y = x.contiguous().view(x.size(0), -1)
         y = torch.flatten(x, start_dim=1)
         y = self.block9(y)
-        y = torch.sigmoid(y)
+        y = torch.sigmoid(y.view(batch_size))
 
         return y

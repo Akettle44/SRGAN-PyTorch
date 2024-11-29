@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 
 from torch.utils.data import Dataset, random_split
 from overrides import override
-from .dataset_interface import TaskDataset
+from src.data.dataset_interface import TaskDataset
 from copy import deepcopy
-from ..utils.img_processing import Downsample
+from src.utils.img_processing import Downsample
 
 class CIFAR10Dataset(Dataset):
 

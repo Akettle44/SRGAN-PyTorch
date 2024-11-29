@@ -60,6 +60,7 @@ class ImageNetDataset(Dataset):
         ret_img = self.image_transform(img_crop)
 
         # Normalize label image
-        label = self.label_transform(img_crop)
+        #label = self.label_transform(img_crop)
+        label = img_crop
 
         return ret_img, label
