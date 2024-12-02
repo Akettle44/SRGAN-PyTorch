@@ -1,6 +1,7 @@
 import torch
 import math
 from torch import nn
+import torchvision.transforms.functional as F
 
 class ResidualBlock(nn.Module):
     '''
@@ -22,8 +23,9 @@ class ResidualBlock(nn.Module):
         output = self.perlu(output)
         output = self.conv2(output)
         output = self.bn2(output)
+        output = x + output
         
-        return x + output
+        return output
 
 class DisBlock(nn.Module):
     '''
@@ -100,13 +102,14 @@ class Generator(nn.Module):
         output = self.block8(output)
         output = self.block9(output)
         # Element wise concat
-        output = self.block10(output + x)
+        output = output + x
+        output = self.block10(output)
         output = self.block11(output)
         output = self.block12(output)
 
-        #######################################
-        # Maybe not just return output #
-        #######################################
+        # Output logits
+        output = torch.sigmoid(output)
+
         return output
 
 class Discriminator(nn.Module):
@@ -114,8 +117,8 @@ class Discriminator(nn.Module):
     SRGAN Discriminator
     '''
     def __init__(self, inp_h, inp_w):
-        self.inp_h = inp_h
-        self.inp_w = inp_w
+        self.scaled_h = inp_h // 16
+        self.scaled_w = inp_w // 16
         # Input height and width used to determine FC-size
         super(Discriminator, self).__init__()
 
@@ -142,12 +145,13 @@ class Discriminator(nn.Module):
         self.block9 = nn.Sequential(
             # Convs currently compress by 16, therefore scale 
             # 512 by that to compensate
-            nn.Linear(512 * (self.inp_h // 16) * (self.inp_w // 16), 1024),
-            nn.LeakyReLU(0.2),
+            nn.Linear(512 * (self.scaled_h) * (self.scaled_w), 1024),
+            nn.LeakyReLU(0.2, inplace=False),
             nn.Linear(1024, 1)
         )
 
     def forward(self, x):
+        batch_size = x.size(0)
         x = self.block1(x)
         x = self.block2(x)
         x = self.block3(x)
@@ -156,7 +160,12 @@ class Discriminator(nn.Module):
         x = self.block6(x)
         x = self.block7(x)
         x = self.block8(x)
-        # Flatten everything after batch
-        x = self.block9(torch.reshape(x, (x.shape[0], -1)))
 
-        return torch.sigmoid(x)
+        # Flatten everything after batch
+        #x = torch.reshape(x , (x.shape[0], -1))
+        #y = x.contiguous().view(x.size(0), -1)
+        y = torch.flatten(x, start_dim=1)
+        y = self.block9(y)
+        y = torch.sigmoid(y.view(batch_size))
+
+        return y

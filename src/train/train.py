@@ -58,6 +58,8 @@ class PtTrainer():
 
     def fineTune(self):
         
+        #torch.autograd.set_detect_anomaly(True)
+
         # Loss
         loss = PerceptualLoss()
 
@@ -65,10 +67,18 @@ class PtTrainer():
         #summary(self.discriminator, (3, 96, 96))
 
         # TODO: Accuracy not implemented yet
-        train_loss = []
+        train_loss_g = []
+        train_loss_d = []
         train_accs = []
-        val_loss = []
+        val_loss_g = []
+        val_loss_d = []
         val_accs = []
+
+        results = {"g_loss": [],
+                   "d_loss": [],
+                   "g_score": [],
+                   "d_score": []
+                   }
 
         for epoch in range(self.hyps['epochs']):
 
@@ -77,43 +87,77 @@ class PtTrainer():
             self.generator.train() 
             self.discriminator.train() 
             
-            train_epoch_loss = []
+            train_g_epoch_loss = []
+            train_d_epoch_loss = []
             #train_batch_accs = []
             
+            train_progress = tqdm(self.train_loader)
+            running_results = {"g_loss": [],
+                               "d_loss": [],
+                               "g_score": [],
+                               "d_score": []
+                               }
+        
             # One iteration over dataset
-            for batch in tqdm(self.train_loader):
+            for batch in train_progress:
 
                 # Images, labels to device               
                 images, labels = batch
                 images = images.to(self.device)
                 labels = labels.to(self.device)
 
-                print(images.shape, labels.shape)
-
                 # Forward pass
                 gens = self.generator(images)
-                print(gens.shape)
-                d_fake = self.discriminator(gens)
+                gens_detached = gens.detach() # Detach generations to prevent interference
+                d_fake = self.discriminator(gens_detached)
                 d_real = self.discriminator(labels)
 
-                # Compute loss
-                d_loss, g_loss = loss(gens, labels, d_fake, d_real)
+                # Compute discriminator loss
+                d_loss, _ = loss(gens_detached, labels, d_fake, d_real)
 
-                # Discriminator Loss
+                # Discriminator Loss Backprop
                 self.d_optimizer.zero_grad()
-                d_loss.backward(retain_graph=True)
+                d_loss.backward()
                 self.d_optimizer.step()
 
-                # Generator Loss
+                # Compute discriminator loss for detached generator
+                d_fake_for_g = self.discriminator(gens) # Recompute so tensors are different
+                _, g_loss = loss(gens, labels, d_fake_for_g, torch.ones_like(d_real))
+
+                # Generator Loss Backprop
                 self.g_optimizer.zero_grad()
-                g_loss.backward(retain_graph=True)
+                g_loss.backward()
                 self.g_optimizer.step()
 
+                # store running result
+                running_results["g_loss"].append(g_loss)
+                running_results["d_loss"].append(d_loss)
+                running_results["g_score"].append(torch.mean(d_real))
+                running_results["d_score"].append(torch.mean(d_fake_for_g))
+                avg_g_loss = torch.mean(torch.tensor(running_results["g_loss"]))
+                avg_d_loss = torch.mean(torch.tensor(running_results["d_loss"]))
+                avg_g_score = torch.mean(torch.tensor(running_results["g_score"]))
+                avg_d_score = torch.mean(torch.tensor(running_results["d_score"]))
+
+                train_progress.set_description(desc="epoch:[%d/%d] g_loss = %.2f, d_loss = %.2f, g_score = %.2f, d_score = %.2f" % (
+                epoch+1, self.hyps["epochs"],
+                avg_g_loss,
+                avg_d_loss,
+                avg_g_score,
+                avg_d_score
+                ))
+                results["g_loss"].append(avg_g_loss)
+                results["d_loss"].append(avg_d_loss)
+                results["g_score"].append(avg_g_score)
+                results["d_score"].append(avg_d_score)
+
                 # Training losses
-                train_epoch_loss.append((g_loss.item(), d_loss.item()))
+                train_g_epoch_loss.append(g_loss.item())
+                train_d_epoch_loss.append(d_loss.item())
 
             # Average loss and accuracy over epoch
-            train_loss.append(torch.mean(torch.tensor(train_epoch_loss)))
+            train_loss_g.append(torch.mean(torch.tensor(train_g_epoch_loss)))
+            train_loss_d.append(torch.mean(torch.tensor(train_d_epoch_loss)))
             #train_accs.append(torch.mean(torch.tensor(train_batch_accs)))
             ### END SINGLE EPOCH TRAIN ###
 
@@ -122,35 +166,120 @@ class PtTrainer():
             self.generator.eval() 
             self.discriminator.eval() 
 
-            val_epoch_loss = []
-            #val_batch_accs = []
+            val_g_epoch_loss = []
+            val_d_epoch_loss = []
 
             with torch.no_grad():
                 # Perform validation
-                for batch in tqdm(self.val_loader):
+                val_progress = tqdm(self.val_loader)
+                running_results = {"g_loss": [],
+                                   "d_loss": [],
+                                   "g_score": [],
+                                   "d_score": []
+                                   }
+                
+                for batch in val_progress:
 
-                    # Images, labels                
+                    # Images, labels to device               
                     images, labels = batch
-                    images.to(self.device)
-                    labels.to(self.device)
+                    images = images.to(self.device)
+                    labels = labels.to(self.device)
 
                     # Forward pass
                     gens = self.generator(images)
-                    d_fake = self.discriminator(labels)
-                    d_real = self.discriminator(gens)
+                    gens_detached = gens.detach() # Detach generations to prevent interference
+                    d_fake = self.discriminator(gens_detached)
+                    d_real = self.discriminator(labels)
 
-                    # Compute loss
-                    d_loss, g_loss = loss(gens, labels, d_fake, d_real)
+                    # Compute discriminator loss
+                    d_loss, _ = loss(gens_detached, labels, d_fake, d_real)
 
+                    # Re-Compute discriminator loss for fake data
+                    d_fake_for_g = self.discriminator(gens) # Recompute so tensors are different
+                    _, g_loss = loss(gens, labels, d_fake_for_g, torch.ones_like(d_real))
+
+                    running_results["g_loss"].append(g_loss)
+                    running_results["d_loss"].append(d_loss)
+                    running_results["g_score"].append(torch.mean(d_real))
+                    running_results["d_score"].append(torch.mean(d_fake_for_g))
+                    avg_g_loss = torch.mean(torch.tensor(running_results["g_loss"]))
+                    avg_d_loss = torch.mean(torch.tensor(running_results["d_loss"]))
+                    avg_g_score = torch.mean(torch.tensor(running_results["g_score"]))
+                    avg_d_score = torch.mean(torch.tensor(running_results["d_score"]))
+
+                    val_progress.set_description(desc="Validation:[%d/%d] g_loss = %.2f, d_loss = %.2f, g_score = %.2f, d_score = %.2f" % (
+                    epoch+1, self.hyps["epochs"],
+                    avg_g_loss,
+                    avg_d_loss,
+                    avg_g_score,
+                    avg_d_score
+                    ))
+                    
                     # Validation losses
-                    val_epoch_loss.append((g_loss.item(), d_loss.item()))
+                    val_g_epoch_loss.append(g_loss.item())
+                    val_d_epoch_loss.append(d_loss.item())
+
             
-            val_loss.append(torch.mean(torch.tensor(val_epoch_loss)))
-            # val_accs.append(torch.mean(torch.tensor(val_batch_accs)))
+            # Average loss and accuracy over epoch
+            val_loss_g.append(torch.mean(torch.tensor(val_g_epoch_loss)))
+            val_loss_d.append(torch.mean(torch.tensor(val_d_epoch_loss)))
             ### END EPOCH VALIDATION ###
 
             # Results from each epoch of training
-            print(f"Epoch {epoch}: train_loss: {train_loss[-1]}, val_loss: {val_loss[-1]}")
-            #print(f"Epoch {epoch}: train_acc: {train_accs[-1]}, val_acc: {val_accs[-1]}")
+            print(f"Epoch {epoch+1}: train_loss_g: {train_loss_g[-1]}, val_loss_g: {val_loss_g[-1]}")
+            print(f"Epoch {epoch+1}: train_loss_d: {train_loss_d[-1]}, val_loss_d: {val_loss_d[-1]}")
 
-        return train_loss, train_accs, val_loss, val_accs
+        return train_loss_g, train_loss_d, val_loss_g, val_loss_d
+    
+
+    def test(self):
+        # Loss
+        loss = PerceptualLoss()
+        results = {"g_loss": [],
+                   "d_loss": [],
+                   "g_score": [],
+                   "d_score": []
+                   }
+        
+        self.generator.eval() 
+        self.discriminator.eval() 
+        with torch.no_grad():
+            test_progress = tqdm(self.test_loader)
+            running_results = {"g_loss": [],
+                    "d_loss": [],
+                    "g_score": [],
+                    "d_score": []
+                    }
+
+            for batch in test_progress:
+                # Images, labels to device               
+                images, labels = batch
+                images = images.to(self.device)
+                labels = labels.to(self.device)
+
+                # Forward pass
+                gens = self.generator(images)
+                gens_detached = gens.detach() # Detach generations to prevent interference
+                d_fake = self.discriminator(gens_detached)
+                d_real = self.discriminator(labels)
+                # Compute discriminator loss
+                d_loss, g_loss = loss(gens, labels, d_fake, d_real)
+
+                # store running result
+                running_results["g_loss"].append(g_loss)
+                running_results["d_loss"].append(d_loss)
+                running_results["g_score"].append(torch.mean(d_real))
+                running_results["d_score"].append(torch.mean(d_fake))
+                avg_g_loss = torch.mean(torch.tensor(running_results["g_loss"]))
+                avg_d_loss = torch.mean(torch.tensor(running_results["d_loss"]))
+                avg_g_score = torch.mean(torch.tensor(running_results["g_score"]))
+                avg_d_score = torch.mean(torch.tensor(running_results["d_score"]))
+
+                test_progress.set_description(desc="g_loss = %.2f, d_loss = %.2f, g_score = %.2f, d_score = %.2f" % (
+                avg_g_loss,
+                avg_d_loss,
+                avg_g_score,
+                avg_d_score
+                ))
+
+        return avg_g_loss, avg_d_loss, avg_g_score, avg_d_score

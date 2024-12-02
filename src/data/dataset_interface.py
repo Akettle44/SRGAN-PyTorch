@@ -3,7 +3,7 @@ import torchvision.transforms as transforms
 from abc import ABC, abstractmethod
 from torch.utils.data import random_split, DataLoader
 
-from ..utils.img_processing import Downsample
+from src.utils.img_processing import Downsample
 
 class TaskDataset(ABC):
     @abstractmethod
