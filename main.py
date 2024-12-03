@@ -43,11 +43,11 @@ def show_images(trainer, loader, save_path):
         plt.subplot(batch_size, 3, 3*i+2)
         plt.imshow(labels[i].permute(1, 2, 0))
         if i == 0: plt.title("HR")
-    plt.show()
 
     if save_path:
-        plt.savefig
         plt.savefig(os.path.join(save_path, "test_set_plot.png"))
+
+    plt.show()
 
 # Trainer for models
 def train():
@@ -84,18 +84,19 @@ def train():
     test_loader = DataLoader(test_dataset, batch_size=batch_size_val, shuffle=False, num_workers=num_workers)
 
     # Model
-    g = Generator(hyps['scale'])
-    d = Discriminator(96, 96)
-    model_name = f"SRGAN_epoch({hyps['epochs']})_scale({hyps['scale']})_4"
+    #g = Generator(hyps['scale'])
+    #d = Discriminator(96, 96)
+    model_name = f"SRGAN_epoch({45})_scale({hyps['scale']})_13"
+    specific_model = os.path.join(model_dir, model_name)
+    g, d = loadModelFromDisk(specific_model, hyps)
     loaders = [train_loader, val_loader, test_loader]
     trainer = PtTrainer(g, d, loaders)
     trainer.sendToDevice()
     trainer.setHyps(hyps)
     trainer.updateOptimizerLr()
     tr_g, tr_d, val_g, val_d = trainer.fineTune()
-    saveModelToDisk(trainer.generator, trainer.discriminator, root_dir, model_name)
-    
-    save_path = os.path.join(root_dir, "models/" + model_name)
+    saveModelToDisk(trainer.generator, trainer.discriminator, root_dir, model_name + "_feat")
+    save_path = os.path.join(root_dir, "models/" + model_name + "_feat")
 
     # show example
     show_images(trainer, test_loader, save_path)
@@ -124,7 +125,7 @@ def eval():
     hyps = Utils.loadHypsFromDisk(os.path.join(os.path.join(model_dir, 'hyps'), dataset_name + '.txt'))
 
     # path
-    model_name = f"SRGAN_epoch({hyps['epochs']})_scale({hyps['scale']})"
+    model_name = f"SRGAN_epoch({hyps['epochs']})_scale({hyps['scale']})_13"
     specific_model = os.path.join(model_dir, model_name)
 
     # Dataset

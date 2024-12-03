@@ -23,16 +23,18 @@ class PerceptualLoss(torch.nn.Module):
             d_loss, g_loss: Loss for discriminator and generator
         """
 
-        g_loss = self.GLoss(hr_fake, hr_real, d_fake, content_choice='mse')
-        #d_loss = self.DLoss_new(d_fake, d_real)
-        d_loss = self.DLoss(d_fake, d_real)
+        g_loss = self.GLoss(hr_fake, hr_real, d_fake, content_choice='feat')
+        d_loss = self.DLoss_lsgan(d_fake, d_real)
+        #d_loss = self.DLoss(d_fake, d_real)
 
         return d_loss, g_loss
 
-    def DLoss_new(self, d_fake, d_real):
-        return 1 - d_real.mean() + d_fake.mean()
+    def DLoss_lsgan(self, d_fake, d_real):
+        l_real = 0.5 * torch.mean((d_real - 1)**2, axis=0)
+        l_fake = 0.5 * torch.mean((d_fake)**2, axis=0)
+        return l_real + l_fake
         
-    def GLoss(self, hr_fake, hr_real, d_fake, content_choice="feat"):
+    def GLoss(self, hr_fake, hr_real, d_fake, content_choice="mse"):
         """ Compute the Generator loss for SRGAN
 
         Args:
@@ -49,17 +51,22 @@ class PerceptualLoss(torch.nn.Module):
         match content_choice:
             case "feat":
                 # Features from fake images
-                _ = self.featureNetwork(hr_fake)
+                # Convert to [0, 1] for VGG
+                vgg_hr_fake = (hr_fake + 1) / 2
+                _ = self.featureNetwork(vgg_hr_fake)
                 feat_fake = self.featureNetwork.features['feats']
                 self.featureNetwork.clearFeatures()
 
                 # Features from real images
-                _ = self.featureNetwork(hr_real)
+                # Convert to [0, 1] for VGG
+                vgg_hr_real = (hr_fake + 1) / 2
+                _ = self.featureNetwork(vgg_hr_real)
                 feat_real = self.featureNetwork.features['feats']
                 self.featureNetwork.clearFeatures()
 
                 # MSE between representations (from paper)
-                l_c = F.mse_loss(feat_fake, feat_real, reduction='mean')
+                # 0.006 is the rescaling factor from the paper
+                l_c = F.mse_loss(feat_fake, feat_real, reduction='mean') * 0.006
 
             case "mse":
                 l_c = F.mse_loss(hr_fake, hr_real, reduction='mean')
