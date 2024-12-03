@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 # Perceptual Loss Function from SRGAN Paper
 class PerceptualLoss(torch.nn.Module):
-    def __init__(self, p_weight=1e-2, featureModel="vgg19"):
+    def __init__(self, p_weight=7e-3, featureModel="vgg19"):
         super(PerceptualLoss, self).__init__()
         self.p_weight = p_weight
         self.featureNetwork = FeatureNetwork(featureModelChoice=featureModel)
@@ -128,7 +128,7 @@ class FeatureNetwork(torch.nn.Module):
                 # 11 is after the 5th Conv / ReLU 
                 # Got this number by printing out vgg.features and looking
                 # at enumeration of sequential
-                self.preset = {"name": "vgg19", "layeridx": 11}
+                self.preset = {"name": "vgg19", "layeridx": 6}
                 self.model = torchvision.models.vgg19(pretrained=True)
                 self.model = self.model.to(self.device)
                 self.model.eval()
