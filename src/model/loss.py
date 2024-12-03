@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 # Perceptual Loss Function from SRGAN Paper
 class PerceptualLoss(torch.nn.Module):
-    def __init__(self, p_weight=1e-3, featureModel="vgg19"):
+    def __init__(self, p_weight=1e-2, featureModel="vgg19"):
         super(PerceptualLoss, self).__init__()
         self.p_weight = p_weight
         self.featureNetwork = FeatureNetwork(featureModelChoice=featureModel)
@@ -74,7 +74,8 @@ class PerceptualLoss(torch.nn.Module):
                 raise(NotImplementedError)
 
         # Compute adverserial loss
-        l_a = -1 * torch.mean(F.logsigmoid(d_fake), dim=0)
+        l_a = -1 * torch.mean(torch.log(d_fake), dim=0)
+        #l_a = torch.mean(F.logsigmoid(d_fake), dim=0)
 
         # Perform perceptual weighting
         g_loss = l_c + self.p_weight * l_a

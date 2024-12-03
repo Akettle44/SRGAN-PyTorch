@@ -63,6 +63,9 @@ class PtTrainer():
         # Loss
         loss = PerceptualLoss()
 
+        # Learning rate scheduler generator
+        g_sched = torch.optim.lr_scheduler.ReduceLROnPlateau(self.g_optimizer, 'min')
+
         #summary(self.generator, (3, 8, 8))
         #summary(self.discriminator, (3, 32, 32))
         #exit(1)
@@ -229,6 +232,10 @@ class PtTrainer():
             # Results from each epoch of training
             print(f"Epoch {epoch+1}: train_loss_g: {train_loss_g[-1]}, val_loss_g: {val_loss_g[-1]}")
             print(f"Epoch {epoch+1}: train_loss_d: {train_loss_d[-1]}, val_loss_d: {val_loss_d[-1]}")
+
+
+            # Step learning rate if necessary
+            g_sched.step(avg_g_loss)
 
         return train_loss_g, train_loss_d, val_loss_g, val_loss_d
     

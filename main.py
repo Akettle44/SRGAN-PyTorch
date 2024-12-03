@@ -62,7 +62,7 @@ def train():
     hyps = Utils.loadHypsFromDisk(os.path.join(os.path.join(model_dir, 'hyps'), dataset_name + '.txt'))
 
     # Dataset
-    blur_kernel_size = (5,9)
+    blur_kernel_size = (3,7)
     sigma = (0.1,1.5)
     batch_size_train = hyps["trbatch"]
     batch_size_val = hyps["valbatch"]
@@ -85,10 +85,10 @@ def train():
 
     # Model
     #g = Generator(hyps['scale'])
-    #d = Discriminator(32, 32)
-    model_name = f"SRGAN_epoch_{8}_scale_{hyps['scale']}_3"
+    d = Discriminator(32, 32)
+    model_name = f"SRGAN_epoch_{5}_scale_{hyps['scale']}_17"
     specific_model = os.path.join(model_dir, model_name)
-    g, d = loadModelFromDisk(specific_model, hyps)
+    g, _ = loadModelFromDisk(specific_model, hyps)
     loaders = [train_loader, val_loader, test_loader]
     trainer = PtTrainer(g, d, loaders)
     trainer.sendToDevice()
@@ -97,6 +97,9 @@ def train():
     tr_g, tr_d, val_g, val_d = trainer.fineTune()
     saveModelToDisk(trainer.generator, trainer.discriminator, root_dir, model_name + "_feat")
     save_path = os.path.join(root_dir, "models/" + model_name + "_feat")
+
+    #saveModelToDisk(trainer.generator, trainer.discriminator, root_dir, model_name)
+    #save_path = os.path.join(root_dir, "models/" + model_name)
 
     # show example
     show_images(trainer, test_loader, save_path)

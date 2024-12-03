@@ -95,11 +95,11 @@ class Generator(nn.Module):
         x = self.block1(x)
         output = self.block2(x)
         output = self.block3(output)
-        #output = self.block4(output) # Remove complexity
-        #output = self.block5(output)
-        #output = self.block6(output)
-        #output = self.block7(output)
-        #output = self.block8(output)
+        output = self.block4(output) 
+        output = self.block5(output)
+        output = self.block6(output)
+        output = self.block7(output)
+        output = self.block8(output)
         output = self.block9(output)
         # Element wise concat
         output = output + x
@@ -108,7 +108,7 @@ class Generator(nn.Module):
         output = self.block12(output)
 
         # Output logits
-        output = torch.sigmoid(output)
+        output = torch.tanh(output)
 
         return output
 
@@ -117,8 +117,8 @@ class Discriminator(nn.Module):
     SRGAN Discriminator
     '''
     def __init__(self, inp_h, inp_w):
-        self.scaled_h = inp_h // 8
-        self.scaled_w = inp_w // 8
+        self.scaled_h = inp_h // 4
+        self.scaled_w = inp_w // 4
         # Input height and width used to determine FC-size
         super(Discriminator, self).__init__()
 
@@ -133,9 +133,9 @@ class Discriminator(nn.Module):
         # k3n128s2
         self.block4 = DisBlock(128, 2, 2)
         # k3n256s1
-        self.block5 = DisBlock(256, 1, 1)
+        #self.block5 = DisBlock(256, 1, 1)
         # k3n256s2
-        self.block6 = DisBlock(256, 1, 2)
+        #self.block6 = DisBlock(256, 2, 2)
         # k3n512s1
         #self.block7 = DisBlock(512, 1, 1)
         # k3n512s2
@@ -147,6 +147,7 @@ class Discriminator(nn.Module):
             # 512 by that to compensate
             nn.Linear(256 * (self.scaled_h) * (self.scaled_w), 1024),
             nn.LeakyReLU(0.2, inplace=False),
+            nn.Dropout(0.5), # Extra noise during training
             nn.Linear(1024, 1)
         )
 
@@ -156,8 +157,8 @@ class Discriminator(nn.Module):
         x = self.block2(x)
         x = self.block3(x)
         x = self.block4(x)
-        x = self.block5(x)
-        x = self.block6(x)
+        #x = self.block5(x)
+        #x = self.block6(x)
         #x = self.block7(x)
         #x = self.block8(x)
 
