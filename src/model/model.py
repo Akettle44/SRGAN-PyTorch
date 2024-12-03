@@ -89,7 +89,7 @@ class Generator(nn.Module):
 
         self.block10 = SubPixel(64, scale)
         self.block11 = SubPixel(64, scale)
-        self.block12 = nn.Sequential(nn.Conv2d(64, 3, kernel_size=9, padding=4))
+        self.block12 = nn.Sequential(nn.Conv2d(64, 3, kernel_size=3, padding=1))
 
     def forward(self, x):
         x = self.block1(x)

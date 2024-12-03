@@ -33,11 +33,13 @@ class PtTrainer():
         """
         # Generator
         for param_group in self.g_optimizer.param_groups:
-            param_group['lr'] = 2e-5 # 1e-5
+            #param_group['lr'] = 2e-5 # 1e-5
+            param_group['lr'] = 1e-4 # 1e-5
 
         # Discriminator
         for param_group in self.d_optimizer.param_groups:
-            param_group['lr'] = 3e-5 # 3e-5
+            param_group['lr'] = 1e-4 # 3e-5
+            #param_group['lr'] = 3e-5 # 3e-5
 
     def setDevice(self, device):
         """ Updates the device  

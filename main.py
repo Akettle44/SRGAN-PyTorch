@@ -86,7 +86,7 @@ def train():
     # Model
     #g = Generator(hyps['scale'])
     d = Discriminator(32, 32)
-    model_name = f"SRGAN_epoch_{5}_scale_{hyps['scale']}_28"
+    model_name = f"SRGAN_epoch_{5}_scale_{hyps['scale']}_k3_5"
     specific_model = os.path.join(model_dir, model_name)
     g, _ = loadModelFromDisk(specific_model, hyps)
     loaders = [train_loader, val_loader, test_loader]

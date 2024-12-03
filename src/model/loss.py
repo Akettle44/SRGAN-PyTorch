@@ -6,7 +6,8 @@ import torch.nn.functional as F
 
 # Perceptual Loss Function from SRGAN Paper
 class PerceptualLoss(torch.nn.Module):
-    def __init__(self, p_weight=7e-3, featureModel="vgg19"):
+    def __init__(self, p_weight=2e-3, featureModel="vgg19"):
+    #def __init__(self, p_weight=7e-3, featureModel="vgg19"):
         super(PerceptualLoss, self).__init__()
         self.p_weight = p_weight
         self.featureNetwork = FeatureNetwork(featureModelChoice=featureModel)
@@ -23,7 +24,7 @@ class PerceptualLoss(torch.nn.Module):
             d_loss, g_loss: Loss for discriminator and generator
         """
 
-        g_loss = self.GLoss(hr_fake, hr_real, d_fake, content_choice='feat')
+        g_loss = self.GLoss(hr_fake, hr_real, d_fake, content_choice='mse')
         d_loss = self.DLoss_lsgan(d_fake, d_real)
         #d_loss = self.DLoss(d_fake, d_real)
 
