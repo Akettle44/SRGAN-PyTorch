@@ -56,7 +56,7 @@ def train():
     root_dir = os.getcwd()
     model_dir = os.path.join(root_dir, 'models')
 
-    dataset_name = "ImageNet"
+    dataset_name = "CIFAR10"
 
     # Load Hyperparameters
     hyps = Utils.loadHypsFromDisk(os.path.join(os.path.join(model_dir, 'hyps'), dataset_name + '.txt'))
@@ -85,8 +85,8 @@ def train():
 
     # Model
     #g = Generator(hyps['scale'])
-    #d = Discriminator(96, 96)
-    model_name = f"SRGAN_epoch({45})_scale({hyps['scale']})_13"
+    #d = Discriminator(32, 32)
+    model_name = f"SRGAN_epoch_{8}_scale_{hyps['scale']}_3"
     specific_model = os.path.join(model_dir, model_name)
     g, d = loadModelFromDisk(specific_model, hyps)
     loaders = [train_loader, val_loader, test_loader]

@@ -76,7 +76,7 @@ class Generator(nn.Module):
         )
         self.block2 = ResidualBlock(64)
         self.block3 = ResidualBlock(64)
-        self.block4 = ResidualBlock(64)
+        self.block4 = ResidualBlock(64) 
         self.block5 = ResidualBlock(64)
         self.block6 = ResidualBlock(64)
         self.block7 = ResidualBlock(64)
@@ -95,11 +95,11 @@ class Generator(nn.Module):
         x = self.block1(x)
         output = self.block2(x)
         output = self.block3(output)
-        output = self.block4(output)
-        output = self.block5(output)
-        output = self.block6(output)
-        output = self.block7(output)
-        output = self.block8(output)
+        #output = self.block4(output) # Remove complexity
+        #output = self.block5(output)
+        #output = self.block6(output)
+        #output = self.block7(output)
+        #output = self.block8(output)
         output = self.block9(output)
         # Element wise concat
         output = output + x
@@ -117,8 +117,8 @@ class Discriminator(nn.Module):
     SRGAN Discriminator
     '''
     def __init__(self, inp_h, inp_w):
-        self.scaled_h = inp_h // 16
-        self.scaled_w = inp_w // 16
+        self.scaled_h = inp_h // 8
+        self.scaled_w = inp_w // 8
         # Input height and width used to determine FC-size
         super(Discriminator, self).__init__()
 
@@ -135,17 +135,17 @@ class Discriminator(nn.Module):
         # k3n256s1
         self.block5 = DisBlock(256, 1, 1)
         # k3n256s2
-        self.block6 = DisBlock(256, 2, 2)
+        self.block6 = DisBlock(256, 1, 2)
         # k3n512s1
-        self.block7 = DisBlock(512, 1, 1)
+        #self.block7 = DisBlock(512, 1, 1)
         # k3n512s2
-        self.block8= DisBlock(512, 1, 2)
+        #self.block8= DisBlock(512, 1, 2)
 
         # FC layer mapping to prediction
         self.block9 = nn.Sequential(
             # Convs currently compress by 16, therefore scale 
             # 512 by that to compensate
-            nn.Linear(512 * (self.scaled_h) * (self.scaled_w), 1024),
+            nn.Linear(256 * (self.scaled_h) * (self.scaled_w), 1024),
             nn.LeakyReLU(0.2, inplace=False),
             nn.Linear(1024, 1)
         )
@@ -158,8 +158,8 @@ class Discriminator(nn.Module):
         x = self.block4(x)
         x = self.block5(x)
         x = self.block6(x)
-        x = self.block7(x)
-        x = self.block8(x)
+        #x = self.block7(x)
+        #x = self.block8(x)
 
         # Flatten everything after batch
         #x = torch.reshape(x , (x.shape[0], -1))

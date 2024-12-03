@@ -28,15 +28,16 @@ class CIFAR10Dataset(Dataset):
         self.image_transform = transforms.Compose([
                                         transforms.GaussianBlur(kernel_size=self.blur_kernel_size, sigma=self.sigma),
                                         Downsample(),
-                                        transforms.Resize(size=(96,96))
+                                        #transforms.Resize(size=(96,96))
                                        ])
         #
         # Normalize to [-1, 1]
         self.label_transform = transforms.Compose([transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))])
 
         # Use before image_transform and label transform
-        self.crop_transform = transforms.Compose([transforms.ToTensor(),
-                                                transforms.RandomCrop(size=(96,96),pad_if_needed=True, padding=0)])
+        self.crop_transform = transforms.Compose([transforms.ToTensor()])
+                                                #transforms.RandomCrop(size=(96,96),pad_if_needed=True, padding=0)])
+                                                
     """ Modifies Torchvision's CIFAR10 dataset where:
             images: downsampled images
             labels: original images

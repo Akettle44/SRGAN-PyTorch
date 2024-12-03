@@ -63,8 +63,9 @@ class PtTrainer():
         # Loss
         loss = PerceptualLoss()
 
-        #summary(self.generator, (3, 24, 24))
-        #summary(self.discriminator, (3, 96, 96))
+        #summary(self.generator, (3, 8, 8))
+        #summary(self.discriminator, (3, 32, 32))
+        #exit(1)
 
         # TODO: Accuracy not implemented yet
         train_loss_g = []

@@ -61,7 +61,8 @@ def loadModelFromDisk(model_dir, hyps):
 
     g = Generator(hyps['scale']) # Added scale=1 TODO: change to appropriate scale value
     g.load_state_dict(gen_state_dict)
-    d = Discriminator(96, 96)
+    #d = Discriminator(96, 96)
+    d = Discriminator(32, 32)
     d.load_state_dict(disc_state_dict)
 
     return g, d
