@@ -23,22 +23,12 @@ class PerceptualLoss(torch.nn.Module):
             d_loss, g_loss: Loss for discriminator and generator
         """
 
-        # Using straight MSE for now
-        # g_loss = self.GLoss(hr_fake, hr_real, d_fake, content_choice='feat')
-        # d_loss = self.DLoss(d_fake, d_real)
-        g_loss = self.GLoss_new(hr_fake, hr_real, d_fake)
-        d_loss = self.DLoss_new(d_fake, d_real)
+        g_loss = self.GLoss(hr_fake, hr_real, d_fake, content_choice='mse')
+        #d_loss = self.DLoss_new(d_fake, d_real)
+        d_loss = self.DLoss(d_fake, d_real)
 
         return d_loss, g_loss
 
-    def GLoss_new(self, generated_image, target, d_fake):
-        content_loss = self.mse(generated_image, target)
-
-        adverserial_loss = torch.mean(-F.logsigmoid(d_fake))
-        #adverserial_loss = torch.mean(torch.ones_like(d_fake) - d_fake)
-
-        return content_loss + 0.001 * adverserial_loss
-    
     def DLoss_new(self, d_fake, d_real):
         return 1 - d_real.mean() + d_fake.mean()
         
