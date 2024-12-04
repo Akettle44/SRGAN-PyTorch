@@ -51,16 +51,12 @@ class PerceptualLoss(torch.nn.Module):
         match content_choice:
             case "feat":
                 # Features from fake images
-                # Convert to [0, 1] for VGG
-                vgg_hr_fake = (hr_fake + 1) / 2
-                _ = self.featureNetwork(vgg_hr_fake)
+                _ = self.featureNetwork(hr_fake)
                 feat_fake = self.featureNetwork.features['feats']
                 self.featureNetwork.clearFeatures()
 
                 # Features from real images
-                # Convert to [0, 1] for VGG
-                vgg_hr_real = (hr_fake + 1) / 2
-                _ = self.featureNetwork(vgg_hr_real)
+                _ = self.featureNetwork(hr_real)
                 feat_real = self.featureNetwork.features['feats']
                 self.featureNetwork.clearFeatures()
 
