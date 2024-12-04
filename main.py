@@ -3,6 +3,7 @@ import os
 import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 from torch.utils.data import random_split, DataLoader
+from torcheval.metrics import FrechetInceptionDistance
 from src.data.imagenet import ImageNetDataset
 from src.data.cifar10 import CIFAR10Dataset
 from src.model.model import Generator, Discriminator
@@ -12,14 +13,54 @@ from src.utils.utils import Utils
 from src.utils.img_processing import Downsample
 from PIL import Image
 
+def FID(g,dataset):
+    fid = FrechetInceptionDistance(device=torch.device('cpu'))
+    g = g.to(torch.device('mps'))
+    for i in range(1):
+        image_LR, image_HR = dataset[i]
+        image_LR_plot = image_LR.permute(1,2,0)
+        image_HR_plot = image_HR.permute(1,2,0)
+
+        image_LR = image_LR.unsqueeze(0)
+        image_LR_mps = image_LR.to('mps')
+
+        image_SR_mps = g(image_LR_mps)
+        image_SR_mps = image_SR_mps.detach()
+        image_SR = image_SR_mps.to('cpu')
+        image_SR = image_SR.squeeze(0)
+        image_SR = image_SR.permute(1,2,0)
+        # fid.update(image_HR, True)
+        # image_HR_mps = image_HR.unsqueeze(0).to('mps')
+
+        fig = plt.figure(figsize=(10,10))
+        plt.subplot(1, 3, 1)
+        plt.imshow(image_LR_plot)
+        plt.title("LR")
+        
+        plt.subplot(1, 3, 2)
+        plt.imshow(image_HR_plot)
+        plt.title("HR")
+
+        plt.subplot(1, 3, 3)
+        plt.imshow(image_SR)
+        plt.title("SR")
+
+        plt.show()
+
+        print(image_HR)
+        image_SR = (((image_SR + 1) / 2) * 255)
+        print(image_SR)
+    return fid.compute()
+
+
 def show_images(trainer, loader, save_path):
     
     # Images, labels to device               
     images, labels = next(iter(loader))
-    images_cuda = images.to('cuda')
+    images_mps = images.to('mps')
 
     # Forward pass
-    gens = trainer.generator(images_cuda)
+    gens = trainer.generator(images_mps)
     gens = gens.detach().cpu()
 
     # Normalize from [0, 1] to [0, 255]
@@ -119,13 +160,13 @@ def eval():
     root_dir = os.getcwd()
     model_dir = os.path.join(root_dir, 'models')
 
-    dataset_name = "ImageNet"
+    dataset_name = "CIFAR10"
 
     # Load Hyperparameters
-    hyps = Utils.loadHypsFromDisk(os.path.join(os.path.join(model_dir, 'hyps'), dataset_name + '.txt'))
+    hyps = Utils.loadHypsFromDisk(os.path.join(os.path.join(model_dir, 'hyps'), 'ImageNet.txt'))
 
     # path
-    model_name = f"SRGAN_epoch({hyps['epochs']})_scale({hyps['scale']})_13"
+    model_name = f"SRGAN_epoch({hyps['epochs']})_scale({hyps['scale']})"
     specific_model = os.path.join(model_dir, model_name)
 
     # Dataset
@@ -136,7 +177,7 @@ def eval():
     num_workers = hyps["numworkers"]
 
     # Create dataset
-    dataset_dir = os.path.join(os.path.join(root_dir, "datasets"), dataset_name.lower())
+    dataset_dir = os.path.join(root_dir, "datasets")
     if dataset_name == "ImageNet":
         dataset = ImageNetDataset(dataset_dir, blur_kernel_size, sigma, batch_size_train, num_workers)
     elif dataset_name == "CIFAR10":
@@ -152,12 +193,13 @@ def eval():
     validator = PtTrainer(g, d, loaders)
     validator.sendToDevice()
     validator.setHyps(hyps)
-    g_loss, d_loss, g_score, d_score = validator.test()
-    print(f"Test g_loss = {g_loss}, d_loss = {d_loss}, g_score = {g_score}, d_score = {d_score}")
+    # g_loss, d_loss, g_score, d_score = validator.test()
+    # print(f"Test g_loss = {g_loss}, d_loss = {d_loss}, g_score = {g_score}, d_score = {d_score}")
 
     # show example
-    show_images(validator, test_loader, None)
+    # show_images(validator, test_loader, None)
+    FID(g,test_dataset)
 
 if __name__ == "__main__":
-    train()
-    #eval()
+    # train()
+    eval()
