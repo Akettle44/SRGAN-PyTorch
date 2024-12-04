@@ -1,16 +1,18 @@
 ### This file performs training in PyTorch
 
 import torch
+import os
 from tqdm import tqdm
 from src.model.loss import PerceptualLoss
 from torchsummary import summary
 
 class PtTrainer():
 
-    def __init__(self, generator, discriminator, loaders, g_optimizer=None, d_optimizer=None):
+    def __init__(self, generator, discriminator, loaders, g_optimizer=None, d_optimizer=None, root_path=None):
         self.generator = generator
         self.discriminator = discriminator
         # TODO: Clean up
+        self.root_path = root_path
         self.train_loader = loaders[0]
         self.val_loader = loaders[1]
         self.test_loader = loaders[2]
@@ -33,13 +35,13 @@ class PtTrainer():
         """
         # Generator
         for param_group in self.g_optimizer.param_groups:
-            #param_group['lr'] = 2e-5 # 1e-5
-            param_group['lr'] = 1e-4 # 1e-5
+            param_group['lr'] = 2e-5 # 1e-5
+            #param_group['lr'] = 1e-4 # 1e-5
 
         # Discriminator
         for param_group in self.d_optimizer.param_groups:
-            param_group['lr'] = 1e-4 # 3e-5
-            #param_group['lr'] = 3e-5 # 3e-5
+            #param_group['lr'] = 1e-4 # 3e-5
+            param_group['lr'] = 3e-5 # 3e-5
 
     def setDevice(self, device):
         """ Updates the device  
@@ -63,7 +65,8 @@ class PtTrainer():
         #torch.autograd.set_detect_anomaly(True)
 
         # Loss
-        loss = PerceptualLoss()
+        vgg_path = os.path.join(os.path.join(self.root_path, "models"), "vgg11_cifar10.pth")
+        loss = PerceptualLoss(model_path=vgg_path)
 
         # Learning rate scheduler generator
         g_sched = torch.optim.lr_scheduler.ReduceLROnPlateau(self.g_optimizer, 'min')
@@ -235,16 +238,16 @@ class PtTrainer():
             print(f"Epoch {epoch+1}: train_loss_g: {train_loss_g[-1]}, val_loss_g: {val_loss_g[-1]}")
             print(f"Epoch {epoch+1}: train_loss_d: {train_loss_d[-1]}, val_loss_d: {val_loss_d[-1]}")
 
-
             # Step learning rate if necessary
-            g_sched.step(avg_g_loss)
+            # g_sched.step(avg_g_loss)
 
         return train_loss_g, train_loss_d, val_loss_g, val_loss_d
     
 
     def test(self):
         # Loss
-        loss = PerceptualLoss()
+        vgg_path = os.path.join(os.path.join(self.root_path, "models"), "vgg11_cifar10.pth")
+        loss = PerceptualLoss(model_path=vgg_path)
         results = {"g_loss": [],
                    "d_loss": [],
                    "g_score": [],

@@ -6,11 +6,11 @@ import torch.nn.functional as F
 
 # Perceptual Loss Function from SRGAN Paper
 class PerceptualLoss(torch.nn.Module):
-    def __init__(self, p_weight=2e-3, featureModel="vgg19"):
-    #def __init__(self, p_weight=7e-3, featureModel="vgg19"):
+    #def __init__(self, p_weight=2e-3, featureModel="vgg11"):
+    def __init__(self, p_weight=4e-3, featureModel="vgg11", model_path=None):
         super(PerceptualLoss, self).__init__()
         self.p_weight = p_weight
-        self.featureNetwork = FeatureNetwork(featureModelChoice=featureModel)
+        self.featureNetwork = FeatureNetwork(featureModelChoice=featureModel, model_path=model_path)
         self.mse = torch.nn.MSELoss()
 
     def forward(self, hr_fake, hr_real, d_fake, d_real):
@@ -24,7 +24,7 @@ class PerceptualLoss(torch.nn.Module):
             d_loss, g_loss: Loss for discriminator and generator
         """
 
-        g_loss = self.GLoss(hr_fake, hr_real, d_fake, content_choice='mse')
+        g_loss = self.GLoss(hr_fake, hr_real, d_fake, content_choice='feat')
         d_loss = self.DLoss_lsgan(d_fake, d_real)
         #d_loss = self.DLoss(d_fake, d_real)
 
@@ -53,22 +53,21 @@ class PerceptualLoss(torch.nn.Module):
             case "feat":
                 # Features from fake images
                 # Convert to [0, 1] for VGG
-                vgg_hr_fake = (hr_fake + 1) / 2
-                _ = self.featureNetwork(vgg_hr_fake)
+                #vgg_hr_fake = (hr_fake + 1) / 2
+                _ = self.featureNetwork(hr_fake)
                 feat_fake = self.featureNetwork.features['feats']
                 self.featureNetwork.clearFeatures()
 
                 # Features from real images
                 # Convert to [0, 1] for VGG
-                vgg_hr_real = (hr_fake + 1) / 2
-                _ = self.featureNetwork(vgg_hr_real)
+                #vgg_hr_real = (hr_fake + 1) / 2
+                _ = self.featureNetwork(hr_real)
                 feat_real = self.featureNetwork.features['feats']
                 self.featureNetwork.clearFeatures()
 
                 # MSE between representations (from paper)
                 # 0.006 is the rescaling factor from the paper
-                l_c = F.mse_loss(feat_fake, feat_real, reduction='mean') * 0.006
-
+                l_c = F.mse_loss(feat_fake, feat_real, reduction='mean') * 0.006 
             case "mse":
                 l_c = F.mse_loss(hr_fake, hr_real, reduction='mean')
             case _:
@@ -80,6 +79,7 @@ class PerceptualLoss(torch.nn.Module):
 
         # Perform perceptual weighting
         g_loss = l_c + self.p_weight * l_a
+        #print(l_c, self.p_weight * l_a)
         return g_loss
 
     def DLoss(self, d_fake, d_real):
@@ -103,9 +103,10 @@ class PerceptualLoss(torch.nn.Module):
 
 class FeatureNetwork(torch.nn.Module):
     """ Feature Network used for Perceptual Loss Function """
-    def __init__(self, featureModelChoice):
+    def __init__(self, featureModelChoice, model_path=None):
         super(FeatureNetwork, self).__init__()
         # Select and load model
+        self.model_path = model_path
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.selectPresetAndLoad(featureModelChoice)
         self.features = {}
@@ -125,12 +126,20 @@ class FeatureNetwork(torch.nn.Module):
             preset: {name, layer_idx}
         """
         match featureModelChoice:
-            case "vgg19":
+            case "vgg11":
                 # 11 is after the 5th Conv / ReLU 
                 # Got this number by printing out vgg.features and looking
                 # at enumeration of sequential
-                self.preset = {"name": "vgg19", "layeridx": 6}
-                self.model = torchvision.models.vgg19(pretrained=True)
+                #self.preset = {"name": "vgg11", "layeridx": 12}
+                self.preset = {"name": "vgg11", "layeridx": 4}
+
+                # Load model from disk
+                state_dict = torch.load(self.model_path)
+                self.model = torchvision.models.vgg11(pretrained=False)
+                self.model.classifier[6] = torch.nn.Linear(4096, 10) # Adjust for CIFAR
+                self.model.load_state_dict(state_dict)
+
+                # Place on device in inference mode
                 self.model = self.model.to(self.device)
                 self.model.eval()
             case _:

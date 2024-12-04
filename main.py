@@ -81,16 +81,16 @@ def train():
     train_dataset, val_dataset, test_dataset = random_split(dataset, train_val_test_split, generator=torch.Generator().manual_seed(42))
     train_loader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, num_workers=num_workers)
     val_loader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=False, num_workers=num_workers)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size_val, shuffle=False, num_workers=num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=num_workers)
 
     # Model
     #g = Generator(hyps['scale'])
     d = Discriminator(32, 32)
-    model_name = f"SRGAN_epoch_{5}_scale_{hyps['scale']}_k3_5"
+    model_name = f"SRGAN_epoch_{5}_scale_{hyps['scale']}_k3_23"
     specific_model = os.path.join(model_dir, model_name)
     g, _ = loadModelFromDisk(specific_model, hyps)
     loaders = [train_loader, val_loader, test_loader]
-    trainer = PtTrainer(g, d, loaders)
+    trainer = PtTrainer(g, d, loaders, root_path=root_dir)
     trainer.sendToDevice()
     trainer.setHyps(hyps)
     trainer.updateOptimizerLr()
@@ -122,17 +122,17 @@ def eval():
     root_dir = os.getcwd()
     model_dir = os.path.join(root_dir, 'models')
 
-    dataset_name = "ImageNet"
+    dataset_name = "CIFAR10"
 
     # Load Hyperparameters
     hyps = Utils.loadHypsFromDisk(os.path.join(os.path.join(model_dir, 'hyps'), dataset_name + '.txt'))
 
     # path
-    model_name = f"SRGAN_epoch({hyps['epochs']})_scale({hyps['scale']})_13"
+    model_name = f"SRGAN_epoch_{5}_scale_{hyps['scale']}_k3_19_feat"
     specific_model = os.path.join(model_dir, model_name)
 
     # Dataset
-    blur_kernel_size = (5,9)
+    blur_kernel_size = (3,7)
     sigma = (0.1,1.5)
     batch_size_train = hyps["trbatch"]
     batch_size_val = hyps["valbatch"]
@@ -147,12 +147,12 @@ def eval():
     
     train_val_test_split = [.7,.15,.15]
     train_dataset, val_dataset, test_dataset = random_split(dataset, train_val_test_split, generator=torch.Generator().manual_seed(42))
-    test_loader = DataLoader(test_dataset, batch_size=batch_size_val, shuffle=False, num_workers=num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=num_workers)
 
     # Load Model
     g, d = loadModelFromDisk(specific_model, hyps)
     loaders = [test_loader, test_loader, test_loader]
-    validator = PtTrainer(g, d, loaders)
+    validator = PtTrainer(g, d, loaders, root_path=root_dir)
     validator.sendToDevice()
     validator.setHyps(hyps)
     g_loss, d_loss, g_score, d_score = validator.test()
