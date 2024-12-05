@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import os
 import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
@@ -161,6 +162,81 @@ def eval():
     # show example
     show_images(validator, test_loader, None)
 
+def showSamples():
+    """ Show samples from different parts of training
+    """
+    # Paths
+    root_dir = os.getcwd()
+    model_dir = os.path.join(root_dir, 'models')
+
+    dataset_name = "CIFAR10"
+
+    # Load Hyperparameters
+    hyps = Utils.loadHypsFromDisk(os.path.join(os.path.join(model_dir, 'hyps'), dataset_name + '.txt'))
+
+    # Dataset
+    blur_kernel_size = (3,7)
+    sigma = (0.1,1.5)
+    batch_size_train = hyps["trbatch"]
+    batch_size_val = hyps["valbatch"]
+    num_workers = hyps["numworkers"]
+
+    # Create dataset
+    dataset_dir = os.path.join(os.path.join(root_dir, "datasets"), dataset_name.lower())
+    if dataset_name == "ImageNet":
+        dataset = ImageNetDataset(dataset_dir, blur_kernel_size, sigma, batch_size_train, num_workers)
+    elif dataset_name == "CIFAR10":
+        dataset = CIFAR10Dataset(dataset_dir, blur_kernel_size, sigma, batch_size_train, num_workers)
+    
+    train_val_test_split = [.7,.15,.15]
+    train_dataset, val_dataset, test_dataset = random_split(dataset, train_val_test_split, generator=torch.Generator().manual_seed(42))
+    test_loader = DataLoader(test_dataset, batch_size=3, shuffle=False, num_workers=num_workers)
+
+    # Load Models
+    mse_model = f"SRGAN_epoch_{5}_scale_{hyps['scale']}_k3_21"
+    mse_path = os.path.join(model_dir, "cifar/generator_block12_k3/" + mse_model)
+    gmse, _ = loadModelFromDisk(mse_path, hyps)
+
+    feat_model = f"SRGAN_epoch_{5}_scale_{hyps['scale']}_k3_21_feat"
+    feat_path = os.path.join(model_dir, "cifar/generator_block12_k3/" + feat_model)
+    gfeat, _ = loadModelFromDisk(feat_path, hyps)
+
+    distf_model = f"SRGAN_epoch_{5}_scale_{hyps['scale']}_k3_7_feat"
+    distf_path = os.path.join(model_dir, "cifar/generator_block12_k3/" + distf_model)
+    gdistf, _ = loadModelFromDisk(distf_path, hyps)
+
+    lr, hr = next(iter(test_loader))
+    mse_gens = gmse(lr).detach()
+    feat_gens = gfeat(lr).detach()
+    distf_gens = gdistf(lr).detach()
+
+    #lr = (lr * 255).byte()
+    # Concatenate images together
+    images = [lr, hr, mse_gens, feat_gens, distf_gens]
+
+    # Plotting the concatenated images
+    fig, axes = plt.subplots(3, 5, figsize=(8, 5))
+    plt.tight_layout(pad=0.5, w_pad=0.5, h_pad=0.5)
+    axes[0,0].set_title("LR")
+    axes[0,1].set_title("HR")
+    axes[0,2].set_title("MSE-Only")
+    axes[0,3].set_title("Feat")
+    axes[0,4].set_title("Dist Failure")
+    fig.patch.set_facecolor('white')
+
+    for i in range(lr.shape[0]):
+        for j in range(len(images)):
+            img = images[j][i].permute((1, 2, 0))  # Convert (C, H, W) to (H, W, C)
+            # Normalize high resolution images from [-1, 1] to [0, 255]
+            if j != 0:
+                img = (((img + 1) / 2) * 255).byte()
+            axes[i,j].imshow(img)
+            axes[i,j].axis('on')
+
+    plt.tight_layout()
+    plt.show()
+
 if __name__ == "__main__":
-    train()
+    #train()
     #eval()
+    showSamples()
