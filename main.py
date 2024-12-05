@@ -13,51 +13,31 @@ from src.utils.utils import Utils
 from src.utils.img_processing import Downsample
 from PIL import Image
 
-def FID(g,dataset):
-    fid = FrechetInceptionDistance(device=torch.device('cpu'))
-    g = g.to(torch.device('mps'))
-    for i in range(1):
-        image_LR, image_HR = dataset[i]
-        image_LR_plot = image_LR.permute(1,2,0)
-        image_HR_plot = image_HR.permute(1,2,0)
+def FID(validator,loader):
+    i = 0
+    for images, labels in iter(loader):
+    # images, labels = next(iter(loader))
+        print("Images processed: ",i)
+        gens = validator.generator(images)
 
-        image_LR = image_LR.unsqueeze(0)
-        image_LR_mps = image_LR.to('mps')
+        images = (images * 255).byte()
 
-        image_SR_mps = g(image_LR_mps)
-        image_SR_mps = image_SR_mps.detach()
-        image_SR = image_SR_mps.to('cpu')
-        image_SR = image_SR.squeeze(0)
-        image_SR = image_SR.permute(1,2,0)
-        # fid.update(image_HR, True)
-        # image_HR_mps = image_HR.unsqueeze(0).to('mps')
+        gens = (((gens + 1) / 2)).float()
+        labels = (((labels + 1) / 2)).float()
 
-        fig = plt.figure(figsize=(10,10))
-        plt.subplot(1, 3, 1)
-        plt.imshow(image_LR_plot)
-        plt.title("LR")
-        
-        plt.subplot(1, 3, 2)
-        plt.imshow(image_HR_plot)
-        plt.title("HR")
+        fid = FrechetInceptionDistance()
+        fid.update(labels, True)
+        fid.update(gens, False)
 
-        plt.subplot(1, 3, 3)
-        plt.imshow(image_SR)
-        plt.title("SR")
+    print(fid.compute())
 
-        plt.show()
-
-        print(image_HR)
-        image_SR = (((image_SR + 1) / 2) * 255)
-        print(image_SR)
-    return fid.compute()
 
 
 def show_images(trainer, loader, save_path):
     
     # Images, labels to device               
     images, labels = next(iter(loader))
-    images_mps = images.to('mps')
+    images_mps = images.to('cuda')
 
     # Forward pass
     gens = trainer.generator(images_mps)
@@ -198,7 +178,7 @@ def eval():
 
     # show example
     # show_images(validator, test_loader, None)
-    FID(g,test_dataset)
+    FID(validator, test_loader)
 
 if __name__ == "__main__":
     # train()
