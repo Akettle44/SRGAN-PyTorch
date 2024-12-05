@@ -15,12 +15,10 @@ from PIL import Image
 
 def FID(validator,loader):
     i = 0
+    print("Total Images: ", len(iter(loader)))
     for images, labels in iter(loader):
-    # images, labels = next(iter(loader))
-        print("Images processed: ",i)
-        gens = validator.generator(images)
-
-        images = (images * 255).byte()
+        images_mps = images.to('mps')
+        gens = validator.generator(images_mps)
 
         gens = (((gens + 1) / 2)).float()
         labels = (((labels + 1) / 2)).float()
@@ -28,6 +26,8 @@ def FID(validator,loader):
         fid = FrechetInceptionDistance()
         fid.update(labels, True)
         fid.update(gens, False)
+        i += 1
+        print("Images processed: ",i)
 
     print(fid.compute())
 
@@ -77,7 +77,7 @@ def train():
     root_dir = os.getcwd()
     model_dir = os.path.join(root_dir, 'models')
 
-    dataset_name = "ImageNet"
+    dataset_name = "CIFAR10"
 
     # Load Hyperparameters
     hyps = Utils.loadHypsFromDisk(os.path.join(os.path.join(model_dir, 'hyps'), dataset_name + '.txt'))
