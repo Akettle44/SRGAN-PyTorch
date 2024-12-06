@@ -23,3 +23,8 @@ This project aims to implement SRGAN with pytorch base on paper
   Thus we moved on to [ImageNet](https://image-net.org/download.php). Due to limited computational power, we first trained on 3,900 images containing only lions, tigers, and cheetahs. After achieving significant results, we move on to a bigger subset of ImageNet containing 23,869 images of different dog breeds.
 
 ## Results
+Upscale Factor = 4
+The left is down-sampled image, the middle is super resolution image(output of the SRGAN), and the right is high-resolution image.
+![Generated_images](https://github.com/Akettle44/SRGAN-PyTorch/blob/Update-readme/figures/full_feat.jpg?raw=true)
+And the training loss curve is:
+![loss](https://github.com/Akettle44/SRGAN-PyTorch/blob/Update-readme/figures/feat_loss_epoch(6)_graph.png?raw=true)
