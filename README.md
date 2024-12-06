@@ -25,6 +25,6 @@ This project aims to implement SRGAN with pytorch base on paper
 ## Results
 Upscale Factor = 4 \
 The left is down-sampled image, the middle is super resolution image(output of the SRGAN), and the right is high-resolution image. \
-![Generated_images](https://github.com/Akettle44/SRGAN-PyTorch/blob/Update-readme/figures/full_feat.jpg?raw=true) \
+![Generated_images](https://github.com/Akettle44/SRGAN-PyTorch/blob/main/figures/full_feat.jpg?raw=true) \
 And the training loss curve is: \
-![loss](https://github.com/Akettle44/SRGAN-PyTorch/blob/Update-readme/figures/feat_loss_epoch(6)_graph.png?raw=true)
+![loss](https://github.com/Akettle44/SRGAN-PyTorch/blob/main/figures/feat_loss_epoch(6)_graph.png?raw=true)
