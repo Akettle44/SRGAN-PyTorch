@@ -21,14 +21,22 @@ def train():
     model_config_name = "srgan-small-standard"
     model_config, dataset_config = Utils.loadConfig(root_dir, model_config_name, dataset_name)
 
+    # Generator
     b1k_sz = model_config['model']['gen_block_1_kernel_size']
     b1p_sz = model_config['model']['gen_block_1_padding_size']
     n_resb = model_config['model']['gen_resid_blocks']
-    cc = model_config['model']['gen_conv_channels']
+    cc = model_config['model']['conv_channels']
     scale = model_config['model']['scale_factor']
-
     g = Generator(b1k_sz, b1p_sz, n_resb, cc, scale)
-    summary(g, (3, 8, 8))
+    #summary(g, (3, 32, 32))
+
+    # Disciminator
+    dbs = model_config['model']['dis_blocks']
+    dp = model_config['model']['dis_dropout']
+    image_h = 32
+    image_w = 32
+    d = Discriminator(dbs, cc, dp, image_h, image_w)
+    #summary(d, (3, 32, 32))
 
     """
     model_dir = os.path.join(root_dir, 'models')

@@ -4,9 +4,9 @@ model:
   gen_block_1_kernel_size: 3 
   gen_block_1_padding_size: 1 
   gen_resid_blocks: 8
-  gen_conv_channels: 64
-  dis_blocks: 4 # includes first mandatory block
-  discrim_dropout: 0.4
+  dis_blocks: 3 # includes first mandatory block
+  conv_channels: 64 # Used by generator and discriminator
+  dis_dropout: 0.4
 
 training:
   epochs: 15
