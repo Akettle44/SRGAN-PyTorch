@@ -1,0 +1,10 @@
+dataset:
+  name: 'cifar'
+  path: 'datasets/cifar'
+  trbatch: 64
+  valbatch: 64
+  testbatch: 1
+  numworkers: 8
+  blur_kernel_size: [3, 7]
+  sigmas: [0.1, 1.5]
+  train_val_test_split: [0.7, 0.15, 0.15]

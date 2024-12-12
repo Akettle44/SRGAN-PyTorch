@@ -11,7 +11,6 @@ class PtTrainer():
     def __init__(self, generator, discriminator, loaders, g_optimizer=None, d_optimizer=None, root_path=None):
         self.generator = generator
         self.discriminator = discriminator
-        # TODO: Clean up
         self.root_path = root_path
         self.train_loader = loaders[0]
         self.val_loader = loaders[1]
