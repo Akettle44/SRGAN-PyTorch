@@ -4,24 +4,20 @@ import torch
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 
-from torch.utils.data import Dataset, random_split
+from torch.utils.data import Dataset
 from overrides import override
-from src.data.dataset_interface import TaskDataset
-from copy import deepcopy
 from src.utils.img_processing import Downsample
 
 class CIFAR10Dataset(Dataset):
 
     @override
-    def __init__(self, root_dir, blur_kernel_size, sigma, batch_size=32, num_workers=8, train=True,
+    def __init__(self, root_dir, blur_kernel_size, sigma, train=True,
                             download=True):
         super().__init__()
 
         self.root_dir = root_dir
         self.blur_kernel_size = blur_kernel_size
         self.sigma = sigma
-        self.batch_size = batch_size
-        self.num_workers = num_workers
 
         self.dataset = torchvision.datasets.CIFAR10(root=root_dir, train=train, download=download)
         # Perform gaussian blurring and downsampling (defined in dataset intereface because all methods use it)

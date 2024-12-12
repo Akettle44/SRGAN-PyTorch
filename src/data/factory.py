@@ -1,15 +1,15 @@
 # This file provides object instantiation for different datasets
 
-from .cifar10 import CIFAR10Dataset
-from .imagenet import ImageNetDataset
+from src.data.cifar10 import CIFAR10Dataset
+from src.data.imagenet import ImageNetDataset
 
 class TaskFactory():
     @staticmethod
-    def createTaskDataSet(task_name, root_dir, blur_kernel_size, sigma, batch_size, num_workers):
+    def createTaskDataSet(task_name, root_dir, blur_kernel_size, sigma):
         match task_name:
-            case "CIFAR10":
-                return CIFAR10Dataset(root_dir, blur_kernel_size, sigma, batch_size, num_workers)
-            case "ImageNet":
-                return ImageNetDataset(root_dir, blur_kernel_size, sigma, batch_size, num_workers)
+            case "cifar":
+                return CIFAR10Dataset(root_dir, blur_kernel_size, sigma)
+            case "imagenet":
+                return ImageNetDataset(root_dir, blur_kernel_size, sigma)
             case _:
                 raise ValueError(f"Task: {task_name} is not currently supported")

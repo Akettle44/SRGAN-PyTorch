@@ -20,26 +20,30 @@ class Utils():
         """
 
         # Model
-        model_path = os.path.join(os.path.join(os.path.join(root_dir, "configs"), "model"), model_name + ".yaml")
-        if not os.path.exists(model_path):
-            ValueError(f"Model Configuration {model_name} does not exist")
-        else:
-            model_config = None
-            with open(model_path, 'r') as f:
-                model_config = yaml.safe_load(f)
-            if not model_config:
-                ValueError(f"Model Configuration {model_name} could not be loaded")
+        if model_name:
+            model_path = os.path.join(os.path.join(os.path.join(root_dir, "configs"), "model"), model_name + ".yaml")
+            if not os.path.exists(model_path):
+                ValueError(f"Model Configuration {model_name} does not exist")
+            else:
+                model_config = None
+                with open(model_path, 'r') as f:
+                    model_config = yaml.safe_load(f)
+                if not model_config:
+                    ValueError(f"Model Configuration {model_name} could not be loaded")
 
         # Dataset
-        dataset_path = os.path.join(os.path.join(os.path.join(root_dir, "configs"), "dataset"), dataset_name + ".yaml")
-        if not os.path.exists(dataset_path):
-            ValueError(f"Dataset Configuration {dataset_name} does not exist")
+        if dataset_name:
+            dataset_path = os.path.join(os.path.join(os.path.join(root_dir, "configs"), "dataset"), dataset_name + ".yaml")
+            if not os.path.exists(dataset_path):
+                ValueError(f"Dataset Configuration {dataset_name} does not exist")
+            else:
+                dataset_config = None
+                with open(dataset_path, 'r') as f:
+                    dataset_config = yaml.safe_load(f)
+                if not dataset_config:
+                    ValueError(f"Dataset Configuration {dataset_name} could not be loaded")
         else:
             dataset_config = None
-            with open(dataset_path, 'r') as f:
-                dataset_config = yaml.safe_load(f)
-            if not dataset_config:
-                ValueError(f"Dataset Configuration {dataset_name} could not be loaded")
         
         return model_config, dataset_config
 

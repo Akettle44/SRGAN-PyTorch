@@ -4,6 +4,7 @@ import os
 import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 from torch.utils.data import random_split, DataLoader
+from src.data.factory import TaskFactory
 from src.data.imagenet import ImageNetDataset
 from src.data.cifar10 import CIFAR10Dataset
 from src.model.model import Generator, Discriminator
@@ -21,6 +22,25 @@ def train():
     model_config_name = "srgan-small-standard"
     model_config, dataset_config = Utils.loadConfig(root_dir, model_config_name, dataset_name)
 
+    # Create dataset
+    dataset_dir = os.path.join(root_dir, dataset_config["dataset"]["path"])
+    trbatch_sz = dataset_config["dataset"]["trbatch"]
+    valbatch_sz = dataset_config["dataset"]["valbatch"]
+    testbatch_sz = dataset_config["dataset"]["testbatch"]
+    num_workers = dataset_config["dataset"]["numworkers"]
+    blur_kernel_size = tuple(dataset_config["dataset"]["blur_kernel_size"])
+    sigmas = tuple(dataset_config["dataset"]["sigmas"])
+    train_val_test_split = tuple(dataset_config["dataset"]["train_val_test_split"])
+    dataset = TaskFactory.createTaskDataSet(dataset_name, dataset_dir, blur_kernel_size, sigmas)
+
+    # Create dataloaders
+    train_val_test_split = [.7,.15,.15]
+    # Seed split so that it is consistent across multiple runs
+    train_dataset, val_dataset, test_dataset = random_split(dataset, train_val_test_split, generator=torch.Generator().manual_seed(42))
+    train_loader = DataLoader(train_dataset, batch_size=trbatch_sz, shuffle=True, num_workers=num_workers)
+    val_loader = DataLoader(val_dataset, batch_size=valbatch_sz, shuffle=False, num_workers=num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=testbatch_sz, shuffle=False, num_workers=num_workers)
+
     # Generator
     b1k_sz = model_config['model']['gen_block_1_kernel_size']
     b1p_sz = model_config['model']['gen_block_1_padding_size']
@@ -37,41 +57,22 @@ def train():
     image_w = 32
     d = Discriminator(dbs, cc, dp, image_h, image_w)
     #summary(d, (3, 32, 32))
+    
+    #g, _ = loadModelFromDisk(root_dir, "srgan-small-standard", os.path.join(model_dir, model_save_name))
 
-    """
-    model_dir = os.path.join(root_dir, 'models')
-    # Create dataset
-    dataset_dir = os.path.join(os.path.join(root_dir, "datasets"), dataset_name.lower())
-    if dataset_name == "ImageNet":
-        dataset = ImageNetDataset(dataset_dir, blur_kernel_size, sigma, batch_size_train, num_workers)
-    elif dataset_name == "CIFAR10":
-        dataset = CIFAR10Dataset(dataset_dir, blur_kernel_size, sigma, batch_size_train, num_workers)
-
-    # Create dataloaders
-    train_val_test_split = [.7,.15,.15]
-    # Seed split so that it is consistent across multiple runs
-    train_dataset, val_dataset, test_dataset = random_split(dataset, train_val_test_split, generator=torch.Generator().manual_seed(42))
-    train_loader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, num_workers=num_workers)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=False, num_workers=num_workers)
-    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=num_workers)
-
-    # Model
-    #g = Generator(hyps['scale'])
-    d = Discriminator(32, 32)
-    model_name = f"SRGAN_epoch_{5}_scale_{hyps['scale']}_k3_23"
-    specific_model = os.path.join(model_dir, model_name)
-    g, _ = loadModelFromDisk(specific_model, hyps)
+    # Train model
     loaders = [train_loader, val_loader, test_loader]
     trainer = PtTrainer(g, d, loaders, root_path=root_dir)
     trainer.sendToDevice()
     trainer.setHyps(hyps)
     trainer.updateOptimizerLr()
     tr_g, tr_d, val_g, val_d = trainer.fineTune()
-    saveModelToDisk(trainer.generator, trainer.discriminator, root_dir, model_name + "_feat")
-    save_path = os.path.join(root_dir, "models/" + model_name + "_feat")
 
-    #saveModelToDisk(trainer.generator, trainer.discriminator, root_dir, model_name)
-    #save_path = os.path.join(root_dir, "models/" + model_name)
+    # Save model to disk
+    model_dir = os.path.join(root_dir, 'models')
+    num = len(os.listdir(model_dir)) + 1
+    model_save_name = 'srgan-training' + '-' + str(num)
+    saveModelToDisk(g, d, root_dir, model_save_name, model_config)
 
     # show example
     show_images(trainer, test_loader, save_path)
@@ -87,7 +88,6 @@ def train():
     plt.legend()
     plt.savefig(os.path.join(save_path, "loss_plot.png"))
     plt.show()
-    """
 
 # Sampling from GAN
 def eval():

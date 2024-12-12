@@ -1,9 +1,11 @@
 import os
 import torch
-from .model import Generator, Discriminator
-from .utils import Utils
+import shutil
+import yaml
+from src.model.model import Generator, Discriminator
+from src.utils.utils import Utils
 
-def saveModelToDisk(generator, discriminator, root_dir, model_name):
+def saveModelToDisk(generator, discriminator, root_dir, model_name, model_config):
     """ Save the GAN model to disk
 
     Args:
@@ -14,55 +16,53 @@ def saveModelToDisk(generator, discriminator, root_dir, model_name):
         model_name (str): Name for the model folder on disk
     """
 
+    # Create save directory
     model_dir = os.path.join(os.path.join(root_dir, "models"), model_name)
     if( not os.path.exists(model_dir)):
         os.mkdir(model_dir)
 
+    # Save generator and discriminator to disk
     generator_dir = os.path.join(model_dir, "generator.pth")
     discriminator_dir = os.path.join(model_dir, "discriminator.pth")
-
-    # Write the config, model, and tokenizer to disk
     torch.save(generator.state_dict(), generator_dir)
     torch.save(discriminator.state_dict(), discriminator_dir)
 
-    # Write model metadata to disk
-    # TODO: Make this relevant to GANs
-    #metadata = os.path.join(model_dir, "metadata.txt")
-    #with open(metadata, 'w') as f:
-        #f.write('Legend: num_classes, task_type \n')
-        #f.write(f"{model.num_classes}, {model.task_type}")
+    # Save a copy of the current hyperparameter config
+    with open(os.path.join(model_dir, model_config['model']['name'] + ".yaml"), 'w') as f:
+        yaml.dump(model_config, f)
 
-def loadModelFromDisk(model_dir, hyps):
-    """ Load the model from disk locally
+def loadModelFromDisk(root_dir, model_config_name, model_dir, \
+                      loadD=False, image_h=None, image_w=None):
+    """ Load the model from local disk
 
     Args:
+        root_dir (str): root directory
         model_dir (str): path to model on disk
     """
+
+    # Load model config
+    model_config, _ = Utils.loadConfig(root_dir, model_config_name, None)
     
-    # Load Hyperparameters
-    # task_name = model_dir.split('/')[-1].split('-')[0]
-    # print(task_name)
-    # # Added 'models' to path to pass test case
-    # hyp_dir = os.path.join(os.path.dirname(os.path.dirname(model_dir)), 'models') # Insanely ratchet
-    # print(hyp_dir)
-    # hyps = Utils.loadHypsFromDisk(os.path.join(os.path.join(hyp_dir, 'hyps'), task_name + '.txt'))
-
-    #metadata = os.path.join(model_dir, "metadata.txt")
-    #with open(metadata, 'r') as f:
-    #    for idx, line in enumerate(f):
-    #        if idx == 1:
-    #            num_classes, task_type = line.split(',')
-    #            num_classes = int(num_classes)
-    #            task_type = task_type.strip()
-
-    # Load generator and discriminator
+    # Generator
     gen_state_dict = torch.load(os.path.join(model_dir, 'generator.pth'))
-    disc_state_dict = torch.load(os.path.join(model_dir, 'discriminator.pth'))
-
-    g = Generator(hyps['scale']) # Added scale=1 TODO: change to appropriate scale value
+    b1k_sz = model_config['model']['gen_block_1_kernel_size']
+    b1p_sz = model_config['model']['gen_block_1_padding_size']
+    n_resb = model_config['model']['gen_resid_blocks']
+    cc = model_config['model']['conv_channels']
+    scale = model_config['model']['scale_factor']
+    g = Generator(b1k_sz, b1p_sz, n_resb, cc, scale)
     g.load_state_dict(gen_state_dict)
-    #d = Discriminator(96, 96)
-    d = Discriminator(32, 32)
-    d.load_state_dict(disc_state_dict)
+
+    # Disciminator
+    if loadD:
+        disc_state_dict = torch.load(os.path.join(model_dir, 'discriminator.pth'))
+        if not image_h or not image_w:
+            ValueError("If you wish to load the discriminator, the image sizes must be provided")
+        dbs = model_config['model']['dis_blocks']
+        dp = model_config['model']['dis_dropout']
+        d = Discriminator(dbs, cc, dp, image_h, image_w)
+        d.load_state_dict(disc_state_dict)
+    else:
+        d = None
 
     return g, d
