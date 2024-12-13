@@ -48,6 +48,44 @@ class Utils():
         return model_config, dataset_config
 
     @staticmethod
+    def show_images(trainer, loader, save_path):
+    
+        # Images, labels to device               
+        images, labels = next(iter(loader))
+        images_cuda = images.to('cuda')
+
+        # Forward pass
+        gens = trainer.generator(images_cuda)
+        gens = gens.detach().cpu()
+
+        # Normalize from [0, 1] to [0, 255]
+        images = (images * 255).byte()
+
+        # Normalize high resolution images from [-1, 1] to [0, 255]
+        gens = (((gens + 1) / 2) * 255).byte()
+        labels = (((labels + 1) / 2) * 255).byte()
+        
+        fig = plt.figure(figsize=(10,12), layout='compressed')
+        batch_size = len(images)
+        for i in range(batch_size):
+            plt.subplot(batch_size, 3, 3*i+1)
+            plt.imshow(images[i].permute(1, 2, 0))
+            if i == 0: plt.title("LR")
+
+            plt.subplot(batch_size, 3, 3*i+3)
+            plt.imshow(gens[i].permute(1, 2, 0))
+            if i == 0: plt.title("SR")
+
+            plt.subplot(batch_size, 3, 3*i+2)
+            plt.imshow(labels[i].permute(1, 2, 0))
+            if i == 0: plt.title("HR")
+
+        if save_path:
+            plt.savefig(os.path.join(save_path, "test_set_plot.png"))
+
+        plt.show()
+
+    @staticmethod
     def showSamples():
         """ Show samples from different parts of training
         """
@@ -122,40 +160,3 @@ class Utils():
         plt.tight_layout()
         plt.show()
     
-    @staticmethod
-    def show_images(trainer, loader, save_path):
-    
-        # Images, labels to device               
-        images, labels = next(iter(loader))
-        images_cuda = images.to('cuda')
-
-        # Forward pass
-        gens = trainer.generator(images_cuda)
-        gens = gens.detach().cpu()
-
-        # Normalize from [0, 1] to [0, 255]
-        images = (images * 255).byte()
-
-        # Normalize high resolution images from [-1, 1] to [0, 255]
-        gens = (((gens + 1) / 2) * 255).byte()
-        labels = (((labels + 1) / 2) * 255).byte()
-        
-        fig = plt.figure(figsize=(10,12), layout='compressed')
-        batch_size = len(images)
-        for i in range(batch_size):
-            plt.subplot(batch_size, 3, 3*i+1)
-            plt.imshow(images[i].permute(1, 2, 0))
-            if i == 0: plt.title("LR")
-
-            plt.subplot(batch_size, 3, 3*i+3)
-            plt.imshow(gens[i].permute(1, 2, 0))
-            if i == 0: plt.title("SR")
-
-            plt.subplot(batch_size, 3, 3*i+2)
-            plt.imshow(labels[i].permute(1, 2, 0))
-            if i == 0: plt.title("HR")
-
-        if save_path:
-            plt.savefig(os.path.join(save_path, "test_set_plot.png"))
-
-        plt.show()

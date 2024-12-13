@@ -11,10 +11,10 @@ from src.utils.img_processing import Downsample
 class CIFAR10Dataset(Dataset):
 
     @override
-    def __init__(self, root_dir, blur_kernel_size, sigma, train=True,
+    def __init__(self, root_dir, blur_kernel_size, sigma, sf, train=True,
                             download=True):
         super().__init__()
-
+        self.sf = sf
         self.root_dir = root_dir
         self.blur_kernel_size = blur_kernel_size
         self.sigma = sigma
@@ -23,7 +23,7 @@ class CIFAR10Dataset(Dataset):
         # Perform gaussian blurring and downsampling (defined in dataset intereface because all methods use it)
         self.image_transform = transforms.Compose([
                                         transforms.GaussianBlur(kernel_size=self.blur_kernel_size, sigma=self.sigma),
-                                        Downsample(),
+                                        Downsample(sf),
                                         #transforms.Resize(size=(96,96))
                                        ])
         #

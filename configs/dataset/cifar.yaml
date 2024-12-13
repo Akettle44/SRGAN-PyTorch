@@ -3,7 +3,7 @@ dataset:
   path: 'datasets/cifar'
   trbatch: 64
   valbatch: 64
-  testbatch: 1
+  testbatch: 8
   numworkers: 8
   blur_kernel_size: [3, 7]
   sigmas: [0.1, 1.5]

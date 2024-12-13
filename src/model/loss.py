@@ -6,11 +6,14 @@ import torch.nn.functional as F
 
 # Perceptual Loss Function from SRGAN Paper
 class PerceptualLoss(torch.nn.Module):
-    #def __init__(self, p_weight=2e-3, featureModel="vgg11"):
-    def __init__(self, p_weight=4e-3, featureModel="vgg11", model_path=None):
+    def __init__(self, loss_choice, p_weight=10e-3, featureModel="vgg11", model_path=None):
         super(PerceptualLoss, self).__init__()
+        self.loss_choice = loss_choice
         self.p_weight = p_weight
-        self.featureNetwork = FeatureNetwork(featureModelChoice=featureModel, model_path=model_path)
+        if self.loss_choice == 'perceptual':
+            self.featureNetwork = FeatureNetwork(featureModelChoice=featureModel, model_path=model_path)
+        else:
+            self.featureNetwork = None
         self.mse = torch.nn.MSELoss()
 
     def forward(self, hr_fake, hr_real, d_fake, d_real):
@@ -23,10 +26,9 @@ class PerceptualLoss(torch.nn.Module):
         Returns:
             d_loss, g_loss: Loss for discriminator and generator
         """
-
-        g_loss = self.GLoss(hr_fake, hr_real, d_fake, content_choice='feat')
-        d_loss = self.DLoss_lsgan(d_fake, d_real)
-        #d_loss = self.DLoss(d_fake, d_real)
+        g_loss = self.GLoss(hr_fake, hr_real, d_fake)
+        #d_loss = self.DLoss_lsgan(d_fake, d_real)
+        d_loss = self.DLoss(d_fake, d_real)
 
         return d_loss, g_loss
 
@@ -35,32 +37,27 @@ class PerceptualLoss(torch.nn.Module):
         l_fake = 0.5 * torch.mean((d_fake)**2, axis=0)
         return l_real + l_fake
         
-    def GLoss(self, hr_fake, hr_real, d_fake, content_choice="mse"):
+    def GLoss(self, hr_fake, hr_real, d_fake):
         """ Compute the Generator loss for SRGAN
 
         Args:
             hr_fake (torch.tensor): G(low_res)
             hr_real (torch.tensor): Labels
             d_fake (torch.tensor): D(G(low_res))
-            content_choice (str, optional): Which content loss to use
 
         Returns:
             g_loss: float
         """
 
         # Compute Content Loss
-        match content_choice:
-            case "feat":
+        match self.loss_choice:
+            case "perceptual":
                 # Features from fake images
-                # Convert to [0, 1] for VGG
-                #vgg_hr_fake = (hr_fake + 1) / 2
                 _ = self.featureNetwork(hr_fake)
                 feat_fake = self.featureNetwork.features['feats']
                 self.featureNetwork.clearFeatures()
 
                 # Features from real images
-                # Convert to [0, 1] for VGG
-                #vgg_hr_real = (hr_fake + 1) / 2
                 _ = self.featureNetwork(hr_real)
                 feat_real = self.featureNetwork.features['feats']
                 self.featureNetwork.clearFeatures()
@@ -75,11 +72,9 @@ class PerceptualLoss(torch.nn.Module):
 
         # Compute adverserial loss
         l_a = -1 * torch.mean(torch.log(d_fake), dim=0)
-        #l_a = torch.mean(F.logsigmoid(d_fake), dim=0)
-
         # Perform perceptual weighting
         g_loss = l_c + self.p_weight * l_a
-        #print(l_c, self.p_weight * l_a)
+
         return g_loss
 
     def DLoss(self, d_fake, d_real):

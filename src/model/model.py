@@ -72,8 +72,7 @@ class Generator(nn.Module):
         )
 
         # Upsample to HR image size
-        self.up1 = UpSample(conv_channels, scale)
-        self.up2 = UpSample(conv_channels, scale)
+        self.uplayers = nn.Sequential(*[UpSample(conv_channels, scale) for i in range(int(math.log2(scale)))])
 
         # Final conv to clean up upsampled feature representation
         self.convout = nn.Sequential(nn.Conv2d(conv_channels, 3, kernel_size=3, padding=1))
@@ -86,8 +85,7 @@ class Generator(nn.Module):
         # Element wise concat
         out = out + x
 
-        out = self.up1(out)
-        out = self.up2(out)
+        out = self.uplayers(out)
         out = self.convout(out)
         
         # Align with [-1, 1] input scale
