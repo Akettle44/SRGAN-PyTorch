@@ -1,6 +1,0 @@
-epochs=5$i
-lr=2e-5$f
-dropout=0.4$f
-trbatch=8$i
-valbatch=8$i
-numworkers=8$i

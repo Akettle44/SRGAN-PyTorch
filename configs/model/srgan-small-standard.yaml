@@ -1,0 +1,21 @@
+model:
+  name: 'SRGAN-small'
+  scale_factor: 4 # Should be power of 2
+  gen_block_1_kernel_size: 3 
+  gen_block_1_padding_size: 1 
+  gen_resid_blocks: 8
+  dis_blocks: 3 # includes first mandatory block
+  conv_channels: 64 # Used by generator and discriminator
+  dis_dropout: 0.4
+
+training:
+  pretrain_epochs: 15
+  epochs: 20
+  g_opt: 'adam'
+  d_opt: 'adam'
+  g_lr: 1.0e-5
+  d_lr: 1.0e-5
+  g_sched: null # 'plateau'
+  d_sched: null
+  loss: 'perceptual' # mse or perceptual
+  loss_extractor: 'models/loss/vgg11_cifar10.pth'

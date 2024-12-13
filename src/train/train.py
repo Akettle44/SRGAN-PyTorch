@@ -1,43 +1,100 @@
 ### This file performs training in PyTorch
 
 import torch
+import os
 from tqdm import tqdm
 from src.model.loss import PerceptualLoss
 from torchsummary import summary
 
 class PtTrainer():
 
-    def __init__(self, generator, discriminator, loaders, g_optimizer=None, d_optimizer=None):
+    def __init__(self, root_path, generator, discriminator, loaders, hyps):
         self.generator = generator
         self.discriminator = discriminator
-        # TODO: Clean up
+        self.root_path = root_path
         self.train_loader = loaders[0]
         self.val_loader = loaders[1]
         self.test_loader = loaders[2]
-        self.g_optimizer = g_optimizer
-        self.d_optimizer = d_optimizer
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.hyps = {}
+        self.hyps = hyps
 
-        if self.g_optimizer is None and self.d_optimizer is None:
-            self.setDefaultOptimizer()
+    def setupPreTraining(self):
+        """ Set up pretraining using MSE only with generator
+        """
+        self.setOptimizer()
+        self.sendToDevice()
+        criterian = torch.nn.MSELoss()
+        g_sched = torch.optim.lr_scheduler.ReduceLROnPlateau(self.g_optimizer, 'min')
+        return criterian, g_sched
 
-    def setDefaultOptimizer(self):
+    def setupTraining(self):
+        """ Prepare for fine training or fine tuning
+        """
+        self.setOptimizer()
+        self.sendToDevice()
+
+        # Choose perceptual or MSE loss
+        if self.hyps['loss'] == 'perceptual':
+            vgg_path = os.path.join(self.root_path, self.hyps['loss_extractor'])
+            loss = PerceptualLoss("perceptual", model_path=vgg_path)
+        else:
+            loss = PerceptualLoss("mse")
+
+        # Learning rate scheduler generator
+        if self.hyps['g_sched']:
+            match self.hyps['g_sched']:
+                case "plateau":
+                    g_sched = torch.optim.lr_scheduler.ReduceLROnPlateau(self.g_optimizer, 'min')
+                case _:
+                    NotImplementedError()
+        else:
+            g_sched = None
+
+        # Learning rate scheduler discriminator
+        if self.hyps['d_sched']:
+            match self.hyps['d_sched']:
+                case "plateau":
+                    d_sched = torch.optim.lr_scheduler.ReduceLROnPlateau(self.d_optimizer, 'min')
+                case _:
+                    NotImplementedError()
+        else:
+            d_sched = None
+
+        return loss, g_sched, d_sched
+
+    def setOptimizer(self):
         """ Select appropriate opitimizer and associated params
         """
-        self.g_optimizer = torch.optim.Adam(self.generator.parameters(), lr=2e-5)
-        self.d_optimizer = torch.optim.Adam(self.discriminator.parameters(), lr=2e-5)
+        # Generator
+        match self.hyps['g_opt']:
+            case 'adam':
+                self.g_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.hyps['g_lr'])
+            case _:
+                ValueError(f"Generator: Optimizer {self.hyps['g_opt']} isn't supported")
+        
+        # Discriminator
+        match self.hyps['d_opt']:
+            case 'adam':
+                self.d_optimizer = torch.optim.Adam(self.discriminator.parameters(), lr=self.hyps['d_lr'])
+            case _:
+                ValueError(f"Discriminator: Optimizer {self.hyps['d_opt']} isn't supported")
 
     def updateOptimizerLr(self):
         """ Update the optimizers learning rate
         """
         # Generator
         for param_group in self.g_optimizer.param_groups:
-            param_group['lr'] = self.hyps['lr']
+            param_group['lr'] = self.hyps['g_lr']
 
         # Discriminator
         for param_group in self.d_optimizer.param_groups:
-            param_group['lr'] = self.hyps['lr']
+            param_group['lr'] = self.hyps['d_lr']
+
+    def setHyps(self, hyps):
+        """ Grab all hyperparameters and their associated value
+        """
+        for key, value in hyps.items():
+            self.hyps[key] = value
 
     def setDevice(self, device):
         """ Updates the device  
@@ -50,35 +107,90 @@ class PtTrainer():
         self.generator = self.generator.to(self.device)
         self.discriminator = self.discriminator.to(self.device)
 
-    def setHyps(self, hyps):
-        """ Grab all hyperparameters and their associated value
+    def pretrain(self):
+        """ Pretrain the generator using only MSE loss
         """
-        for key, value in hyps.items():
-            self.hyps[key] = value
-
-    def fineTune(self):
         
+        criterian, g_sched = self.setupPreTraining()
+
+        train_loss_g = []
+        val_loss_g = []
+
+        for epoch in range(self.hyps['pretrain_epochs']):
+
+            ### TRAIN SINGLE EPOCH ###
+            # Set training mode in PyTorch
+            self.generator.train() 
+            train_g_epoch_loss = []
+            
+            train_progress = tqdm(self.train_loader)
+            # One iteration over dataset
+            for batch in train_progress:
+
+                # Images, labels to device               
+                images, labels = batch
+                images = images.to(self.device)
+                labels = labels.to(self.device)
+
+                # Forward pass
+                gens = self.generator(images)
+                loss = criterian(gens, labels)
+
+                # Generator Loss Backprop
+                self.g_optimizer.zero_grad()
+                loss.backward()
+                self.g_optimizer.step()
+
+                # Training losses
+                train_g_epoch_loss.append(loss.item())
+
+            # Average loss and accuracy over epoch
+            train_loss_g.append(torch.mean(torch.tensor(train_g_epoch_loss)))
+
+            ### EPOCH VALIDATION ###
+            # Set eval mode
+            self.generator.eval() 
+
+            val_g_epoch_loss = []
+
+            with torch.no_grad():
+                # Perform validation
+                val_progress = tqdm(self.val_loader)
+                for batch in val_progress:
+                    # Images, labels to device               
+                    images, labels = batch
+                    images = images.to(self.device)
+                    labels = labels.to(self.device)
+
+                    # Forward pass
+                    gens = self.generator(images)
+                    loss = criterian(gens, labels)
+
+                    # Validation losses
+                    val_g_epoch_loss.append(loss.item())
+
+            # Average loss and accuracy over epoch
+            val_loss_g.append(torch.mean(torch.tensor(val_g_epoch_loss)))
+            ### END EPOCH VALIDATION ###
+
+            # Results from each epoch of training
+            print(f"Epoch {epoch+1}: train_loss_g: {train_loss_g[-1]}, val_loss_g: {val_loss_g[-1]}")
+            g_sched.step(train_loss_g[-1])
+
+        return train_loss_g,  val_loss_g
+
+    def train(self):
+        """ Train the model
+        """        
         #torch.autograd.set_detect_anomaly(True)
 
-        # Loss
-        loss = PerceptualLoss()
+        # Load optimizer + loss + schedulers
+        loss, g_sched, d_sched = self.setupTraining()
 
-        #summary(self.generator, (3, 24, 24))
-        #summary(self.discriminator, (3, 96, 96))
-
-        # TODO: Accuracy not implemented yet
         train_loss_g = []
         train_loss_d = []
-        train_accs = []
         val_loss_g = []
         val_loss_d = []
-        val_accs = []
-
-        results = {"g_loss": [],
-                   "d_loss": [],
-                   "g_score": [],
-                   "d_score": []
-                   }
 
         for epoch in range(self.hyps['epochs']):
 
@@ -89,15 +201,8 @@ class PtTrainer():
             
             train_g_epoch_loss = []
             train_d_epoch_loss = []
-            #train_batch_accs = []
             
             train_progress = tqdm(self.train_loader)
-            running_results = {"g_loss": [],
-                               "d_loss": [],
-                               "g_score": [],
-                               "d_score": []
-                               }
-        
             # One iteration over dataset
             for batch in train_progress:
 
@@ -129,28 +234,6 @@ class PtTrainer():
                 g_loss.backward()
                 self.g_optimizer.step()
 
-                # store running result
-                running_results["g_loss"].append(g_loss)
-                running_results["d_loss"].append(d_loss)
-                running_results["g_score"].append(torch.mean(d_real))
-                running_results["d_score"].append(torch.mean(d_fake_for_g))
-                avg_g_loss = torch.mean(torch.tensor(running_results["g_loss"]))
-                avg_d_loss = torch.mean(torch.tensor(running_results["d_loss"]))
-                avg_g_score = torch.mean(torch.tensor(running_results["g_score"]))
-                avg_d_score = torch.mean(torch.tensor(running_results["d_score"]))
-
-                train_progress.set_description(desc="epoch:[%d/%d] g_loss = %.2f, d_loss = %.2f, g_score = %.2f, d_score = %.2f" % (
-                epoch+1, self.hyps["epochs"],
-                avg_g_loss,
-                avg_d_loss,
-                avg_g_score,
-                avg_d_score
-                ))
-                results["g_loss"].append(avg_g_loss)
-                results["d_loss"].append(avg_d_loss)
-                results["g_score"].append(avg_g_score)
-                results["d_score"].append(avg_d_score)
-
                 # Training losses
                 train_g_epoch_loss.append(g_loss.item())
                 train_d_epoch_loss.append(d_loss.item())
@@ -158,7 +241,10 @@ class PtTrainer():
             # Average loss and accuracy over epoch
             train_loss_g.append(torch.mean(torch.tensor(train_g_epoch_loss)))
             train_loss_d.append(torch.mean(torch.tensor(train_d_epoch_loss)))
-            #train_accs.append(torch.mean(torch.tensor(train_batch_accs)))
+
+            # Print out per batch
+            #train_progress.set_description(
+            #    desc=f"epoch:[{epoch+1}], g_loss_train = {train_loss_g[-1]:.2f}, d_loss_train = {train_loss_d[-1]:.2f}")    
             ### END SINGLE EPOCH TRAIN ###
 
             ### EPOCH VALIDATION ###
@@ -172,12 +258,6 @@ class PtTrainer():
             with torch.no_grad():
                 # Perform validation
                 val_progress = tqdm(self.val_loader)
-                running_results = {"g_loss": [],
-                                   "d_loss": [],
-                                   "g_score": [],
-                                   "d_score": []
-                                   }
-                
                 for batch in val_progress:
 
                     # Images, labels to device               
@@ -198,28 +278,16 @@ class PtTrainer():
                     d_fake_for_g = self.discriminator(gens) # Recompute so tensors are different
                     _, g_loss = loss(gens, labels, d_fake_for_g, torch.ones_like(d_real))
 
-                    running_results["g_loss"].append(g_loss)
-                    running_results["d_loss"].append(d_loss)
-                    running_results["g_score"].append(torch.mean(d_real))
-                    running_results["d_score"].append(torch.mean(d_fake_for_g))
-                    avg_g_loss = torch.mean(torch.tensor(running_results["g_loss"]))
-                    avg_d_loss = torch.mean(torch.tensor(running_results["d_loss"]))
-                    avg_g_score = torch.mean(torch.tensor(running_results["g_score"]))
-                    avg_d_score = torch.mean(torch.tensor(running_results["d_score"]))
-
-                    val_progress.set_description(desc="Validation:[%d/%d] g_loss = %.2f, d_loss = %.2f, g_score = %.2f, d_score = %.2f" % (
-                    epoch+1, self.hyps["epochs"],
-                    avg_g_loss,
-                    avg_d_loss,
-                    avg_g_score,
-                    avg_d_score
-                    ))
-                    
                     # Validation losses
                     val_g_epoch_loss.append(g_loss.item())
                     val_d_epoch_loss.append(d_loss.item())
 
-            
+                    # Print out per batch
+                    #val_progress.set_description(
+                    #desc=f"epoch:[{epoch+1}] \
+                    #       g_loss_val = {val_g_epoch_loss[-1]:.2f}, \
+                    #       d_loss_val = {val_d_epoch_loss[-1]:.2f}")    
+
             # Average loss and accuracy over epoch
             val_loss_g.append(torch.mean(torch.tensor(val_g_epoch_loss)))
             val_loss_d.append(torch.mean(torch.tensor(val_d_epoch_loss)))
@@ -229,29 +297,29 @@ class PtTrainer():
             print(f"Epoch {epoch+1}: train_loss_g: {train_loss_g[-1]}, val_loss_g: {val_loss_g[-1]}")
             print(f"Epoch {epoch+1}: train_loss_d: {train_loss_d[-1]}, val_loss_d: {val_loss_d[-1]}")
 
+            # Step learning rates if necessary
+            if g_sched:
+                g_sched.step(train_loss_g[-1])
+            if d_sched:
+                d_sched.step(train_loss_d[-1])
+
         return train_loss_g, train_loss_d, val_loss_g, val_loss_d
     
 
     def test(self):
-        # Loss
-        loss = PerceptualLoss()
-        results = {"g_loss": [],
-                   "d_loss": [],
-                   "g_score": [],
-                   "d_score": []
-                   }
-        
+
+        test_loss_g = []
+        test_loss_d = []
+
+        # Load optimizer + loss + schedulers
+        loss, g_sched, d_sched = self.setupTraining()
         self.generator.eval() 
         self.discriminator.eval() 
+
         with torch.no_grad():
             test_progress = tqdm(self.test_loader)
-            running_results = {"g_loss": [],
-                    "d_loss": [],
-                    "g_score": [],
-                    "d_score": []
-                    }
-
             for batch in test_progress:
+
                 # Images, labels to device               
                 images, labels = batch
                 images = images.to(self.device)
@@ -262,24 +330,16 @@ class PtTrainer():
                 gens_detached = gens.detach() # Detach generations to prevent interference
                 d_fake = self.discriminator(gens_detached)
                 d_real = self.discriminator(labels)
+
                 # Compute discriminator loss
-                d_loss, g_loss = loss(gens, labels, d_fake, d_real)
+                d_loss, _ = loss(gens_detached, labels, d_fake, d_real)
 
-                # store running result
-                running_results["g_loss"].append(g_loss)
-                running_results["d_loss"].append(d_loss)
-                running_results["g_score"].append(torch.mean(d_real))
-                running_results["d_score"].append(torch.mean(d_fake))
-                avg_g_loss = torch.mean(torch.tensor(running_results["g_loss"]))
-                avg_d_loss = torch.mean(torch.tensor(running_results["d_loss"]))
-                avg_g_score = torch.mean(torch.tensor(running_results["g_score"]))
-                avg_d_score = torch.mean(torch.tensor(running_results["d_score"]))
+                # Re-Compute discriminator loss for fake data
+                d_fake_for_g = self.discriminator(gens) # Recompute so tensors are different
+                _, g_loss = loss(gens, labels, d_fake_for_g, torch.ones_like(d_real))
 
-                test_progress.set_description(desc="g_loss = %.2f, d_loss = %.2f, g_score = %.2f, d_score = %.2f" % (
-                avg_g_loss,
-                avg_d_loss,
-                avg_g_score,
-                avg_d_score
-                ))
+                # Validation losses
+                test_loss_g.append(g_loss.item())
+                test_loss_d.append(d_loss.item())
 
-        return avg_g_loss, avg_d_loss, avg_g_score, avg_d_score
+        return torch.mean(test_loss_g), torch.mean(test_loss_d)

@@ -5,7 +5,7 @@ import torchvision.transforms.functional as F
 
 class ResidualBlock(nn.Module):
     '''
-    This is Residuel Block in the Generator Network
+    This is Residuel Block in the generator network
     Note that spatial depth is maintained with padding, 
     this is essential for the residual layers
     '''
@@ -27,31 +27,14 @@ class ResidualBlock(nn.Module):
         
         return output
 
-class DisBlock(nn.Module):
-    '''
-    This is the main structure in Discriminator network
-    '''
-    def __init__(self, channel, scale=1, stride=1):
-        super(DisBlock, self).__init__()
-        self.conv = nn.Conv2d(channel, channel * scale, kernel_size=3, padding=1, stride=stride)
-        self.bn = nn.BatchNorm2d(channel * scale)
-        self.lekrelu = nn.LeakyReLU(0.2)
-    
-    def forward(self, x):
-        x = self.conv(x)
-        x = self.bn(x)
-        x = self.lekrelu(x)
-
-        return x
-
-class SubPixel(nn.Module):
+class UpSample(nn.Module):
     '''
     Upsample the image spatially
     For scale factor = r, conv (c_in, c_out r**2)
     Reshape output of conv to shape: (c_in, h * r, w * r)
     '''
     def __init__(self, channel_in, scale):
-        super(SubPixel, self).__init__()
+        super(UpSample, self).__init__()
         self.up_scale = int(math.sqrt(scale))
         self.conv = nn.Conv2d(channel_in, channel_in * self.up_scale**2, kernel_size=3, padding=1)
         self.pixshuff = nn.PixelShuffle(self.up_scale)
@@ -67,105 +50,107 @@ class Generator(nn.Module):
     '''
     SRGAN Generator
     '''
-    def __init__(self, scale):
+    def __init__(self, block_1_k_size, block_1_padding, num_resid_blocks, conv_channels, \
+                 scale):
         super(Generator, self).__init__()
 
-        self.block1 = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=9, padding=4),
+        # Initial feature extraction
+        # Kernel size should be tuned to size of images
+        self.fextraction = nn.Sequential(
+            nn.Conv2d(3, conv_channels, kernel_size=block_1_k_size, padding=block_1_padding),
             nn.PReLU()
         )
-        self.block2 = ResidualBlock(64)
-        self.block3 = ResidualBlock(64)
-        self.block4 = ResidualBlock(64)
-        self.block5 = ResidualBlock(64)
-        self.block6 = ResidualBlock(64)
-        self.block7 = ResidualBlock(64)
-        self.block8 = ResidualBlock(64)
-        self.block9 = nn.Sequential(
-            nn.Conv2d(64, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64)
-        )
-        # do element-wise sum before passing into block 10 (in forward)
 
-        self.block10 = SubPixel(64, scale)
-        self.block11 = SubPixel(64, scale)
-        self.block12 = nn.Sequential(nn.Conv2d(64, 3, kernel_size=9, padding=4))
+        # Stack residual block
+        # The number of residual blocks is the main difference across network sizes
+        self.resblocks = nn.Sequential(*[ResidualBlock(conv_channels) for i in range(num_resid_blocks)])
+
+        # Consolidate features from residual extraction
+        self.fconsolidation = nn.Sequential(
+            nn.Conv2d(conv_channels, conv_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(conv_channels)
+        )
+
+        # Upsample to HR image size
+        self.uplayers = nn.Sequential(*[UpSample(conv_channels, scale) for i in range(int(math.log2(scale)))])
+
+        # Final conv to clean up upsampled feature representation
+        self.convout = nn.Sequential(nn.Conv2d(conv_channels, 3, kernel_size=3, padding=1))
 
     def forward(self, x):
-        x = self.block1(x)
-        output = self.block2(x)
-        output = self.block3(output)
-        output = self.block4(output)
-        output = self.block5(output)
-        output = self.block6(output)
-        output = self.block7(output)
-        output = self.block8(output)
-        output = self.block9(output)
+        x = self.fextraction(x)
+        out = self.resblocks(x)
+        out = self.fconsolidation(out)
+        
         # Element wise concat
-        output = output + x
-        output = self.block10(output)
-        output = self.block11(output)
-        output = self.block12(output)
+        out = out + x
 
-        # Output logits
-        output = torch.sigmoid(output)
+        out = self.uplayers(out)
+        out = self.convout(out)
+        
+        # Align with [-1, 1] input scale
+        out = torch.tanh(out)
+        return out
 
-        return output
+class DisBlock(nn.Module):
+    '''
+    Block for discriminator
+    Each block increases the depth by 2 and the spatial dimensions by 2
+    '''
+    def __init__(self, cc):
+        super(DisBlock, self).__init__()
+        self.dblock = nn.Sequential(
+            nn.Conv2d(cc, cc, kernel_size=3, padding=1),
+            nn.BatchNorm2d(cc),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(cc, cc * 2, kernel_size=3, padding=1, stride=2),
+            nn.BatchNorm2d(cc * 2),
+            nn.LeakyReLU(0.2)
+        )
+    
+    def forward(self, x):
+        return self.dblock(x)
 
 class Discriminator(nn.Module):
     '''
     SRGAN Discriminator
     '''
-    def __init__(self, inp_h, inp_w):
-        self.scaled_h = inp_h // 16
-        self.scaled_w = inp_w // 16
-        # Input height and width used to determine FC-size
+    def __init__(self, nblocks, cc, dropout, inp_h, inp_w):
         super(Discriminator, self).__init__()
 
-        self.block1 = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3, padding=1),
-            nn.LeakyReLU()
+        # Feature extractor
+        self.fextraction = nn.Sequential(
+            nn.Conv2d(3, cc, kernel_size=3, padding=1),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(cc, cc * 2, kernel_size=3, padding=1, stride=2),
+            nn.BatchNorm2d(cc * 2),
+            nn.LeakyReLU(0.2)
         )
-        # k3n64s2
-        self.block2 = DisBlock(64, 2, 2)
-        # k3n128s1
-        self.block3 = DisBlock(128, 1, 1)
-        # k3n128s2
-        self.block4 = DisBlock(128, 2, 2)
-        # k3n256s1
-        self.block5 = DisBlock(256, 1, 1)
-        # k3n256s2
-        self.block6 = DisBlock(256, 2, 2)
-        # k3n512s1
-        self.block7 = DisBlock(512, 1, 1)
-        # k3n512s2
-        self.block8= DisBlock(512, 1, 2)
+
+        # Progressively increase depth and reduce spatial dimensions
+        # e.g. if cc = 64, nblocks = 3, depths: 64 (fextraction), 128, 256
+        self.dblocks = nn.Sequential(*[DisBlock(cc*(2**i)) for i in range(1, nblocks)])
 
         # FC layer mapping to prediction
-        self.block9 = nn.Sequential(
-            # Convs currently compress by 16, therefore scale 
-            # 512 by that to compensate
-            nn.Linear(512 * (self.scaled_h) * (self.scaled_w), 1024),
+        change = 2**nblocks
+        self.cls = nn.Sequential(
+            # Depth given by cc * (2**nblocks)
+            # Spatial: inp_h // (2**nblocks), inp_w // (2**nblocks)
+            nn.Linear(cc * (change) * \
+                     (inp_h // change) * (inp_w // change), \
+                     1024),
             nn.LeakyReLU(0.2, inplace=False),
+            nn.Dropout(dropout), # Extra noise during training
             nn.Linear(1024, 1)
         )
 
     def forward(self, x):
         batch_size = x.size(0)
-        x = self.block1(x)
-        x = self.block2(x)
-        x = self.block3(x)
-        x = self.block4(x)
-        x = self.block5(x)
-        x = self.block6(x)
-        x = self.block7(x)
-        x = self.block8(x)
+        out = self.fextraction(x)
+        out = self.dblocks(out)
 
-        # Flatten everything after batch
-        #x = torch.reshape(x , (x.shape[0], -1))
-        #y = x.contiguous().view(x.size(0), -1)
-        y = torch.flatten(x, start_dim=1)
-        y = self.block9(y)
-        y = torch.sigmoid(y.view(batch_size))
+        out = torch.flatten(out, start_dim=1)
+        out = self.cls(out)
+        out = torch.sigmoid(out.view(batch_size))
 
-        return y
+        return out
