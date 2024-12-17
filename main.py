@@ -106,7 +106,7 @@ def eval():
     cc = model_config['model']['conv_channels']
     scale = model_config['model']['scale_factor']
     g = Generator(b1k_sz, b1p_sz, n_resb, cc, scale)
-    model_load_name = 'srgan-training-15'
+    model_load_name = 'srgan-training-20'
 
     # Disciminator
     dbs = model_config['model']['dis_blocks']
