@@ -3,12 +3,13 @@ import torch
 import os
 import yaml
 import matplotlib.pyplot as plt
+from torcheval.metrics import FrechetInceptionDistance
 
 # Utility functions for bert pruning
 class Utils():
 
     @staticmethod
-    def loadConfig(root_dir, model_name, dataset_name):
+    def loadConfig(root_dir, model_name, dataset_name, pretrained=False, model_loc=None):
         """ Load config files from disk
 
         Args:
@@ -21,27 +22,35 @@ class Utils():
 
         # Model
         if model_name:
-            model_path = os.path.join(os.path.join(os.path.join(root_dir, "configs"), "model"), model_name + ".yaml")
+            # Set path
+            if pretrained:
+                if not model_loc:
+                    raise ValueError(f"Model path must be provided if loading from disk")
+                model_path = os.path.join(model_loc, model_name + ".yaml")
+            else:    
+                model_path = os.path.join(os.path.join(os.path.join(root_dir, "configs"), "model"), model_name + ".yaml")
+
+            # Verify path exists
             if not os.path.exists(model_path):
-                ValueError(f"Model Configuration {model_name} does not exist")
+                raise ValueError(f"Model Configuration {model_name} does not exist")
             else:
                 model_config = None
                 with open(model_path, 'r') as f:
                     model_config = yaml.safe_load(f)
                 if not model_config:
-                    ValueError(f"Model Configuration {model_name} could not be loaded")
+                    raise ValueError(f"Model Configuration {model_name} could not be loaded")
 
         # Dataset
         if dataset_name:
             dataset_path = os.path.join(os.path.join(os.path.join(root_dir, "configs"), "dataset"), dataset_name + ".yaml")
             if not os.path.exists(dataset_path):
-                ValueError(f"Dataset Configuration {dataset_name} does not exist")
+                raise ValueError(f"Dataset Configuration {dataset_name} does not exist")
             else:
                 dataset_config = None
                 with open(dataset_path, 'r') as f:
                     dataset_config = yaml.safe_load(f)
                 if not dataset_config:
-                    ValueError(f"Dataset Configuration {dataset_name} could not be loaded")
+                    raise ValueError(f"Dataset Configuration {dataset_name} could not be loaded")
         else:
             dataset_config = None
         
@@ -84,6 +93,41 @@ class Utils():
             plt.savefig(os.path.join(save_path, "test_set_plot.png"))
 
         plt.show()
+
+    @staticmethod
+    def computeFID(generator, dloader):
+        """ Compute the average Frechet Inception Distance (FID) score over 
+            a test-set using a trained generator
+
+        Args:
+            generator (torch.nn.module): Trained generator
+            dloader (torch.utils.data.dataloader): _description_
+        """
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # Set eval mode
+        generator.eval() 
+        fid = FrechetInceptionDistance(device=device)
+        generator = generator.to(device)
+        scores = []
+        with torch.no_grad():
+            for batch in dloader:
+                # Images, labels to device               
+                images, labels = batch
+                images = images.to(device)
+                labels = labels.to(device)
+
+                # Forward pass
+                gens = generator(images)
+
+                # Convert real and fake from [-1, 1] to [0, 1]
+                gens =   ((gens + 1) / 2).float()
+                labels = ((labels + 1) / 2).float()
+
+                # Update fake, update real
+                fid.update(gens, False) # Fake
+                fid.update(labels, True) # Real
+
+        return fid.compute() 
 
     @staticmethod
     def showSamples():
