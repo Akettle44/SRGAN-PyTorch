@@ -36,7 +36,7 @@ We used yaml files for the dataset and model configuration to make our repositor
 
 ## Results
 CIFAR10:
-We found super-resolution difficult to work with on CIFAR10. We trained hundreds of models, but were never able to ...
+We found super-resolution difficult to work with on CIFAR10. We trained hundreds of models, but were never able to reduce the FID score below ~80, which is extremely high. The MSE trained model achieved 85.04, whereas the Feature Based loss marginally improved to an FID score of 84.8.
 
 ImageNet: TBD
 
