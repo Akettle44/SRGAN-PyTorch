@@ -338,8 +338,8 @@ class PtTrainer():
                 d_fake_for_g = self.discriminator(gens) # Recompute so tensors are different
                 _, g_loss = loss(gens, labels, d_fake_for_g, torch.ones_like(d_real))
 
-                # Validation losses
+                # Test losses
                 test_loss_g.append(g_loss.item())
                 test_loss_d.append(d_loss.item())
 
-        return torch.mean(test_loss_g), torch.mean(test_loss_d)
+        return torch.mean(torch.tensor(test_loss_g)), torch.mean(torch.tensor(test_loss_d))

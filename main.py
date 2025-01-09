@@ -18,8 +18,8 @@ def train():
 
     # Get configs
     root_dir = os.getcwd()
-    dataset_name = "cifar"
-    model_config_name = "srgan-small-standard"
+    dataset_name = "imagenet"
+    model_config_name = "srgan-medium-standard"
     model_config, dataset_config = Utils.loadConfig(root_dir, model_config_name, dataset_name)
 
     # Generator
@@ -29,15 +29,15 @@ def train():
     cc = model_config['model']['conv_channels']
     scale = model_config['model']['scale_factor']
     g = Generator(b1k_sz, b1p_sz, n_resb, cc, scale)
-    #summary(g, (3, 4, 4))
+    #summary(g, (3, 24, 24))
 
     # Disciminator
     dbs = model_config['model']['dis_blocks']
     dp = model_config['model']['dis_dropout']
-    image_h = 32
-    image_w = 32
+    image_h = 96
+    image_w = 96
     d = Discriminator(dbs, cc, dp, image_h, image_w)
-    #summary(d, (3, 32, 32))
+    #summary(d, (3, 96, 96))
 
     #g, _ = loadModelFromDisk(root_dir, "srgan-small-standard", os.path.join(model_dir, model_save_name))
 
@@ -50,12 +50,21 @@ def train():
     blur_kernel_size = tuple(dataset_config["dataset"]["blur_kernel_size"])
     sigmas = tuple(dataset_config["dataset"]["sigmas"])
     train_val_test_split = tuple(dataset_config["dataset"]["train_val_test_split"])
-    dataset = TaskFactory.createTaskDataSet(dataset_name, dataset_dir, blur_kernel_size, sigmas, scale)
 
-    # Create dataloaders
-    train_val_test_split = [.7,.15,.15]
-    # Seed split so that it is consistent across multiple runs
-    train_dataset, val_dataset, test_dataset = random_split(dataset, train_val_test_split, generator=torch.Generator().manual_seed(42))
+    # Create dataset
+    if 'cifar' in dataset_name:
+        dataset = TaskFactory.createTaskDataSet(dataset_name, dataset_dir, scale, None, None, None, None)
+        train_val_test_split = [.7,.15,.15]
+        # Seed split so that it is consistent across multiple runs
+        train_dataset, val_dataset, test_dataset = random_split(dataset, train_val_test_split, generator=torch.Generator().manual_seed(42))
+    elif 'imagenet' in dataset_name:
+        train_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subtrain"), scale, None, None, None, None)
+        val_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subval"), scale, None, None, None, None)
+        test_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subtest"), scale, None, None, None, None)
+    else:
+        raise ValueError(f"Dataset: {dataset_name} is not currently supported")
+
+    # Create Dataloaders
     train_loader = DataLoader(train_dataset, batch_size=trbatch_sz, shuffle=True, num_workers=num_workers)
     val_loader = DataLoader(val_dataset, batch_size=valbatch_sz, shuffle=False, num_workers=num_workers)
     test_loader = DataLoader(test_dataset, batch_size=testbatch_sz, shuffle=False, num_workers=num_workers)
@@ -93,9 +102,9 @@ def train():
 def eval():
     # Get configs
     root_dir = os.getcwd()
-    dataset_name = "cifar"
-    model_config_name = "SRGAN-small"
-    model_disk_name= "srgan-training-15"
+    dataset_name = "imagenet"
+    model_config_name = "srgan-medium-standard"
+    model_disk_name= "srgan-training-5"
     model_dir = os.path.join(os.path.join(root_dir, "models"), model_disk_name)
     model_config, dataset_config = Utils.loadConfig(root_dir, model_config_name, dataset_name, pretrained=True, model_loc=model_dir)
 
@@ -106,16 +115,16 @@ def eval():
     cc = model_config['model']['conv_channels']
     scale = model_config['model']['scale_factor']
     g = Generator(b1k_sz, b1p_sz, n_resb, cc, scale)
-    model_load_name = 'srgan-training-20'
+    model_load_name = 'srgan-training-5'
 
     # Disciminator
     dbs = model_config['model']['dis_blocks']
     dp = model_config['model']['dis_dropout']
-    image_h = 32
-    image_w = 32
+    image_h = 96
+    image_w = 96
     d = Discriminator(dbs, cc, dp, image_h, image_w)
 
-    g, _ = loadModelFromDisk(root_dir, "srgan-small-standard", model_dir, image_h=image_h, image_w=image_w)
+    g, _ = loadModelFromDisk(root_dir, model_config_name, model_dir, image_h=image_h, image_w=image_w)
 
     # Create dataset
     dataset_dir = os.path.join(root_dir, dataset_config["dataset"]["path"])
@@ -123,18 +132,20 @@ def eval():
     valbatch_sz = dataset_config["dataset"]["valbatch"]
     testbatch_sz = dataset_config["dataset"]["testbatch"]
     num_workers = dataset_config["dataset"]["numworkers"]
-    blur_kernel_size = tuple(dataset_config["dataset"]["blur_kernel_size"])
-    sigmas = tuple(dataset_config["dataset"]["sigmas"])
-    train_val_test_split = tuple(dataset_config["dataset"]["train_val_test_split"])
-    dataset = TaskFactory.createTaskDataSet(dataset_name, dataset_dir, blur_kernel_size, sigmas, scale)
 
-    # Create dataloaders
-    train_val_test_split = [.7,.15,.15]
+    train_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subtrain"), scale, None, None, None, None)
+    val_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subval"), scale, None, None, None, None)
+    test_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subtest"), scale, None, None, None, None)
+
     # Seed split so that it is consistent across multiple runs
-    train_dataset, val_dataset, test_dataset = random_split(dataset, train_val_test_split, generator=torch.Generator().manual_seed(42))
-    train_loader = DataLoader(train_dataset, batch_size=trbatch_sz, shuffle=True, num_workers=num_workers)
-    val_loader = DataLoader(val_dataset, batch_size=valbatch_sz, shuffle=False, num_workers=num_workers)
     test_loader = DataLoader(test_dataset, batch_size=testbatch_sz, shuffle=False, num_workers=num_workers)
+
+    # Train model
+    loaders = [test_loader, test_loader, test_loader]
+    trainer = PtTrainer(root_dir, g, d, loaders, model_config['training'])
+    trainer.sendToDevice()
+
+    Utils.show_images(trainer, test_loader, None)
 
     # Compute FID Score
     fid = Utils.computeFID(g, test_loader)
