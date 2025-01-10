@@ -55,9 +55,9 @@ def train(root_dir, model_config_name, dataset_name, model_dir, save_name):
         # Seed split so that it is consistent across multiple runs
         train_dataset, val_dataset, test_dataset = random_split(dataset, train_val_test_split, generator=torch.Generator().manual_seed(42))
     elif 'imagenet' in dataset_name:
-        train_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subtrain"), scale, None, None, None, None)
-        val_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subval"), scale, None, None, None, None)
-        test_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subtest"), scale, None, None, None, None)
+        train_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "ttrain"), scale, None, None, None, None)
+        val_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "tval"), scale, None, None, None, None)
+        test_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "ttest"), scale, None, None, None, None)
     else:
         raise ValueError(f"Dataset: {dataset_name} is not currently supported")
 

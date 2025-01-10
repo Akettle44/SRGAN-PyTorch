@@ -53,7 +53,7 @@ class PtTrainer():
                 case "plateau":
                     g_sched = torch.optim.lr_scheduler.ReduceLROnPlateau(self.g_optimizer, 'min')
                 case "multi":
-                    g_sched = torch.optim.lr_scheduler.MultiplicativeLR(self.g_optimizer, [int(self.hyps['epochs'] / 2)])
+                    g_sched = torch.optim.lr_scheduler.MultiStepLR(self.g_optimizer, milestones=[int(self.hyps['epochs'] / 2)])
                 case _:
                     raise NotImplementedError()
 
@@ -64,7 +64,7 @@ class PtTrainer():
                 case "plateau":
                     d_sched = torch.optim.lr_scheduler.ReduceLROnPlateau(self.d_optimizer, 'min')
                 case "multi":
-                    d_sched = torch.optim.lr_scheduler.MultiplicativeLR(self.g_optimizer, [int(self.hyps['epochs'] / 2)])
+                    d_sched = torch.optim.lr_scheduler.MultiStepLR(self.d_optimizer, milestones=[int(self.hyps['epochs'] / 2)])
                 case _:
                     raise NotImplementedError()
 
@@ -321,9 +321,9 @@ class PtTrainer():
 
             # Step learning rates if necessary
             if g_sched:
-                g_sched.step(train_loss_g[-1])
+                g_sched.step()
             if d_sched:
-                d_sched.step(train_loss_d[-1])
+                d_sched.step()
 
         return train_loss_g, train_loss_d, val_loss_g, val_loss_d
     
