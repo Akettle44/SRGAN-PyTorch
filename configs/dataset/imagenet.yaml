@@ -1,8 +1,8 @@
 dataset:
   name: 'imagenet'
   path: 'datasets/imagenet/Data/CLS-LOC'
-  trbatch: 128
-  valbatch: 128
+  trbatch: 64
+  valbatch: 64
   testbatch: 8
   numworkers: 8
   blur_kernel_size: [5, 9]

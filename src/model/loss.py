@@ -127,10 +127,12 @@ class FeatureNetwork(torch.nn.Module):
                 self.preset = {"name": "vgg11", "layeridx": 4}
 
                 # Load model from disk
-                state_dict = torch.load(self.model_path)
-                self.model = torchvision.models.vgg11(pretrained=False)
-                #self.model.classifier[6] = torch.nn.Linear(4096, 10) # Adjust for CIFAR
-                self.model.load_state_dict(state_dict)
+                self.model = torch.load(self.model_path)
+                self.model.classifier[6] = torch.nn.Linear(4096, 10) # Adjust for CIFAR
+
+                #state_dict = torch.load(self.model_path).state_dict()
+                #self.model = torchvision.models.vgg11(pretrained=False)
+                #self.model.load_state_dict(state_dict)
 
                 # Place on device in inference mode
                 self.model = self.model.to(self.device)
@@ -142,14 +144,15 @@ class FeatureNetwork(torch.nn.Module):
                 self.preset = {"name": "vgg19", "layeridx": 11}
 
                 # Load model from disk
-                state_dict = torch.load(self.model_path)
-                self.model = torchvision.models.vgg19(pretrained=True)
-                self.model.load_state_dict(state_dict)
+                self.model = torch.load(self.model_path)
+
+                #state_dict = torch.load(self.model_path).state_dict()
+                #self.model = torchvision.models.vgg19(pretrained=False)
+                #self.model.load_state_dict(state_dict)
 
                 # Place on device in inference mode
                 self.model = self.model.to(self.device)
                 self.model.eval()
-
             case _:
                 raise(NotImplementedError)
 

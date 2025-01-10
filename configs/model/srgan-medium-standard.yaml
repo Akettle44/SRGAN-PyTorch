@@ -10,13 +10,13 @@ model:
   dis_dropout: 0.0
 
 training:
-  pretrain_epochs: 1
-  epochs: 1
+  pretrain_epochs: 2
+  epochs: 3
   g_opt: 'adam'
   d_opt: 'adam'
   g_lr: 1.0e-4
   d_lr: 1.0e-4
   g_sched: null # 'plateau'
   d_sched: null
-  loss: 'mse' # mse or perceptual
+  loss: 'perceptual' # mse or perceptual
   loss_extractor: 'models/loss/vgg19_imagenet.pth'
