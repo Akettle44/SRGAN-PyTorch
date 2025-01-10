@@ -2,6 +2,7 @@
 
 import os
 import pytest
+from PIL import Image
 from src.model.model import Generator, Discriminator
 from src.data.imagenet import ImageNetDataset
 
@@ -15,6 +16,13 @@ def setUp():
 @pytest.fixture
 def tearDown():
     pass
+
+@pytest.fixture(scope='class')
+def testImage():
+    root_dir = os.getcwd()
+    test_image_dir = os.path.join(os.path.join(root_dir, "datasets"), "unit_test")
+    test_image = os.path.join(test_image_dir, "test_image.JPEG")
+    return Image.open(test_image)
 
 @pytest.fixture
 def generator():

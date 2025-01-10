@@ -21,16 +21,22 @@ class PtTrainer():
     def setupPreTraining(self):
         """ Set up pretraining using MSE only with generator
         """
-        self.setOptimizer()
+        self.setOptimizer("pretraining")
         self.sendToDevice()
         criterian = torch.nn.MSELoss()
-        g_sched = torch.optim.lr_scheduler.ReduceLROnPlateau(self.g_optimizer, 'min')
+        g_sched = None
+        if self.hyps['pre_g_sched']:
+            match self.hyps['pre_g_sched']:
+                case "plateau":
+                    g_sched = torch.optim.lr_scheduler.ReduceLROnPlateau(self.g_optimizer, 'min')
+                case _:
+                    raise NotImplementedError()
         return criterian, g_sched
 
     def setupTraining(self):
         """ Prepare for fine training or fine tuning
         """
-        self.setOptimizer()
+        self.setOptimizer("training")
         self.sendToDevice()
 
         # Choose perceptual or MSE loss
@@ -40,44 +46,58 @@ class PtTrainer():
         else:
             loss = PerceptualLoss("mse")
 
+        g_sched = None
         # Learning rate scheduler generator
         if self.hyps['g_sched']:
             match self.hyps['g_sched']:
                 case "plateau":
                     g_sched = torch.optim.lr_scheduler.ReduceLROnPlateau(self.g_optimizer, 'min')
+                case "multi":
+                    g_sched = torch.optim.lr_scheduler.MultiStepLR(self.g_optimizer, milestones=[int(self.hyps['epochs'] / 2)])
                 case _:
-                    NotImplementedError()
-        else:
-            g_sched = None
+                    raise NotImplementedError()
 
+        d_sched = None
         # Learning rate scheduler discriminator
         if self.hyps['d_sched']:
             match self.hyps['d_sched']:
                 case "plateau":
                     d_sched = torch.optim.lr_scheduler.ReduceLROnPlateau(self.d_optimizer, 'min')
+                case "multi":
+                    d_sched = torch.optim.lr_scheduler.MultiStepLR(self.d_optimizer, milestones=[int(self.hyps['epochs'] / 2)])
                 case _:
-                    NotImplementedError()
-        else:
-            d_sched = None
+                    raise NotImplementedError()
 
         return loss, g_sched, d_sched
 
-    def setOptimizer(self):
+    def setOptimizer(self, phase):
         """ Select appropriate opitimizer and associated params
         """
-        # Generator
-        match self.hyps['g_opt']:
-            case 'adam':
-                self.g_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.hyps['g_lr'])
+        match phase:
+            case 'pretraining':
+                # Generator
+                match self.hyps['g_opt']:
+                    case 'adam':
+                        self.g_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.hyps['pre_g_lr'])
+                    case _:
+                        ValueError(f"Generator: Optimizer {self.hyps['g_opt']} isn't supported")
+            case 'training':
+                # Generator
+                match self.hyps['g_opt']:
+                    case 'adam':
+                        self.g_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.hyps['g_lr'])
+                    case _:
+                        ValueError(f"Generator: Optimizer {self.hyps['g_opt']} isn't supported")
+                
+                # Discriminator
+                match self.hyps['d_opt']:
+                    case 'adam':
+                        self.d_optimizer = torch.optim.Adam(self.discriminator.parameters(), lr=self.hyps['d_lr'])
+                    case _:
+                        ValueError(f"Discriminator: Optimizer {self.hyps['d_opt']} isn't supported")
             case _:
-                ValueError(f"Generator: Optimizer {self.hyps['g_opt']} isn't supported")
-        
-        # Discriminator
-        match self.hyps['d_opt']:
-            case 'adam':
-                self.d_optimizer = torch.optim.Adam(self.discriminator.parameters(), lr=self.hyps['d_lr'])
-            case _:
-                ValueError(f"Discriminator: Optimizer {self.hyps['d_opt']} isn't supported")
+                raise ValueError(f"Phase {phase} not supported in GAN training")
+
 
     def updateOptimizerLr(self):
         """ Update the optimizers learning rate
@@ -104,8 +124,10 @@ class PtTrainer():
     def sendToDevice(self):
         """ Places objects on correct device prior to training
         """
-        self.generator = self.generator.to(self.device)
-        self.discriminator = self.discriminator.to(self.device)
+        if self.generator:
+            self.generator = self.generator.to(self.device)
+        if self.discriminator:
+            self.discriminator = self.discriminator.to(self.device)
 
     def pretrain(self):
         """ Pretrain the generator using only MSE loss
@@ -299,9 +321,9 @@ class PtTrainer():
 
             # Step learning rates if necessary
             if g_sched:
-                g_sched.step(train_loss_g[-1])
+                g_sched.step()
             if d_sched:
-                d_sched.step(train_loss_d[-1])
+                d_sched.step()
 
         return train_loss_g, train_loss_d, val_loss_g, val_loss_d
     
@@ -338,8 +360,8 @@ class PtTrainer():
                 d_fake_for_g = self.discriminator(gens) # Recompute so tensors are different
                 _, g_loss = loss(gens, labels, d_fake_for_g, torch.ones_like(d_real))
 
-                # Validation losses
+                # Test losses
                 test_loss_g.append(g_loss.item())
                 test_loss_d.append(d_loss.item())
 
-        return torch.mean(test_loss_g), torch.mean(test_loss_d)
+        return torch.mean(torch.tensor(test_loss_g)), torch.mean(torch.tensor(test_loss_d))

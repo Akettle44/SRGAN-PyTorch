@@ -1,0 +1,24 @@
+model:
+  name: 'srgan-medium-standard'
+  scale_factor: 4 # Should be power of 2
+  gen_block_1_kernel_size: 9 
+  gen_block_1_padding_size: 4
+  gen_resid_blocks: 16
+  dis_blocks: 4 # includes first mandatory block
+  conv_channels: 64 # Used by generator and discriminator
+  crop_size: [96, 96]
+  dis_dropout: 0.0
+
+training:
+  pretrain_epochs: 2
+  epochs: 2
+  g_opt: 'adam'
+  d_opt: 'adam'
+  pre_g_lr: 1.0e-4
+  g_lr: 1.0e-4
+  d_lr: 1.0e-4
+  pre_g_sched: 'plateau' # 'plateau'
+  g_sched: 'multi'
+  d_sched: 'multi'
+  loss: 'perceptual' # mse or perceptual
+  loss_extractor: 'models/loss/vgg19_imagenet.pth'

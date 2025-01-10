@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 # Perceptual Loss Function from SRGAN Paper
 class PerceptualLoss(torch.nn.Module):
-    def __init__(self, loss_choice, p_weight=10e-3, featureModel="vgg11", model_path=None):
+    def __init__(self, loss_choice, p_weight=10e-3, featureModel="vgg19", model_path=None):
         super(PerceptualLoss, self).__init__()
         self.loss_choice = loss_choice
         self.p_weight = p_weight
@@ -89,12 +89,10 @@ class PerceptualLoss(torch.nn.Module):
         Returns:
             d_loss: Discriminator loss
         """
-
         d_loss_real = F.binary_cross_entropy(d_real, torch.ones_like(d_real))
         d_loss_fake = F.binary_cross_entropy(d_fake, torch.zeros_like(d_fake))
         d_loss = d_loss_real + d_loss_fake 
         return d_loss
-
 
 class FeatureNetwork(torch.nn.Module):
     """ Feature Network used for Perceptual Loss Function """
@@ -129,10 +127,28 @@ class FeatureNetwork(torch.nn.Module):
                 self.preset = {"name": "vgg11", "layeridx": 4}
 
                 # Load model from disk
-                state_dict = torch.load(self.model_path)
-                self.model = torchvision.models.vgg11(pretrained=False)
+                self.model = torch.load(self.model_path)
                 self.model.classifier[6] = torch.nn.Linear(4096, 10) # Adjust for CIFAR
-                self.model.load_state_dict(state_dict)
+
+                #state_dict = torch.load(self.model_path).state_dict()
+                #self.model = torchvision.models.vgg11(pretrained=False)
+                #self.model.load_state_dict(state_dict)
+
+                # Place on device in inference mode
+                self.model = self.model.to(self.device)
+                self.model.eval()
+            case "vgg19":
+                # 19 is after the 5th Conv / ReLU 
+                # Got this number by printing out vgg.features and looking
+                # at enumeration of sequential
+                self.preset = {"name": "vgg19", "layeridx": 11}
+
+                # Load model from disk
+                self.model = torch.load(self.model_path)
+
+                #state_dict = torch.load(self.model_path).state_dict()
+                #self.model = torchvision.models.vgg19(pretrained=False)
+                #self.model.load_state_dict(state_dict)
 
                 # Place on device in inference mode
                 self.model = self.model.to(self.device)

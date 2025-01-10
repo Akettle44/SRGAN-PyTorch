@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from torch.utils.data import Dataset
 from overrides import override
-from src.utils.img_processing import Downsample
+from src.utils.image_processing import Preprocessing
 
 class CIFAR10Dataset(Dataset):
 
@@ -23,7 +23,7 @@ class CIFAR10Dataset(Dataset):
         # Perform gaussian blurring and downsampling (defined in dataset intereface because all methods use it)
         self.image_transform = transforms.Compose([
                                         transforms.GaussianBlur(kernel_size=self.blur_kernel_size, sigma=self.sigma),
-                                        Downsample(sf),
+                                        Preprocessing.Bicubic(sf),
                                         #transforms.Resize(size=(96,96))
                                        ])
         #
