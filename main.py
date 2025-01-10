@@ -1,12 +1,8 @@
 import torch
-import numpy as np
+import argparse
 import os
-import matplotlib.pyplot as plt
-import torchvision.transforms as transforms
 from torch.utils.data import random_split, DataLoader
 from src.data.factory import TaskFactory
-from src.data.imagenet import ImageNetDataset
-from src.data.cifar10 import CIFAR10Dataset
 from src.model.model import Generator, Discriminator
 from src.train.train import PtTrainer
 from src.model.load_save import saveModelToDisk, loadModelFromDisk
@@ -14,14 +10,13 @@ from src.utils.utils import Utils
 from torchsummary import summary
 
 # Trainer for models
-def train():
+def train(root_dir, model_config_name, dataset_name, model_dir, save_name):
 
-    # Get configs
-    root_dir = os.getcwd()
-    dataset_name = "imagenet"
-    model_config_name = "srgan-medium-standard"
+    ### CONFIGURATION ###
     model_config, dataset_config = Utils.loadConfig(root_dir, model_config_name, dataset_name)
-
+    ### END CONFIGURATION ###
+    
+    ### MODEL ###
     # Generator
     b1k_sz = model_config['model']['gen_block_1_kernel_size']
     b1p_sz = model_config['model']['gen_block_1_padding_size']
@@ -34,14 +29,16 @@ def train():
     # Disciminator
     dbs = model_config['model']['dis_blocks']
     dp = model_config['model']['dis_dropout']
-    image_h = 96
-    image_w = 96
+    image_h, image_w = tuple(model_config['model']['crop_size'])
     d = Discriminator(dbs, cc, dp, image_h, image_w)
     #summary(d, (3, 96, 96))
 
-    #g, _ = loadModelFromDisk(root_dir, "srgan-small-standard", os.path.join(model_dir, model_save_name))
+    # Overwrite models by loading from disk
+    if model_dir:
+        g, d = loadModelFromDisk(root_dir, model_config_name, model_dir, image_h=image_h, image_w=image_w)
+    ### END MODEL ###
 
-    # Create dataset
+    ### DATASET ###
     dataset_dir = os.path.join(root_dir, dataset_config["dataset"]["path"])
     trbatch_sz = dataset_config["dataset"]["trbatch"]
     valbatch_sz = dataset_config["dataset"]["valbatch"]
@@ -68,7 +65,9 @@ def train():
     train_loader = DataLoader(train_dataset, batch_size=trbatch_sz, shuffle=True, num_workers=num_workers)
     val_loader = DataLoader(val_dataset, batch_size=valbatch_sz, shuffle=False, num_workers=num_workers)
     test_loader = DataLoader(test_dataset, batch_size=testbatch_sz, shuffle=False, num_workers=num_workers)
+    ### END DATASET ###
 
+    ### TRAINING ###
     # Train model
     loaders = [train_loader, val_loader, test_loader]
     trainer = PtTrainer(root_dir, g, d, loaders, model_config['training'])
@@ -77,35 +76,28 @@ def train():
     tr_g, val_g = trainer.pretrain()
     # Perform GAN training
     tr_g, tr_d, val_g, val_d = trainer.train()
+    ### END TRAINING ###
 
-    # Save model to disk + show examples from training
-    model_dir = os.path.join(root_dir, 'models')
-    num = len(os.listdir(model_dir)) + 1
-    model_save_name = 'srgan-training' + '-' + str(num)
-    saveModelToDisk(g, d, root_dir, model_save_name, model_config)
-    save_path = os.path.join(model_dir, model_save_name)
-    Utils.show_images(trainer, test_loader, save_path)
+    ### RECORD RESULTS ###
+    # Save model to disk
+    if not model_dir:
+        model_dir = os.path.join(os.path.join(root_dir, 'models'), dataset_name)
+    if not save_name:
+        num = len(os.listdir(model_dir)) + 1
+        save_name = 'srgan-training-run-' + str(num)
+    save_path = os.path.join(model_dir, save_name)
 
-    # Plot loss results (show it decreases)
-    plt.plot(range(len(tr_g)), tr_g, label="Training Loss Generator", color='blue')
-    plt.plot(range(len(tr_d)), tr_d, label="Training Loss Discriminator", color='orange')
-    plt.plot(range(len(val_g)), val_g, label="Validation Loss Generator", color='mediumseagreen')
-    plt.plot(range(len(val_d)), val_d, label="Validation Loss Discriminator", color='crimson')
-    plt.title(f"Training curves for {model_save_name}")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.legend()
-    plt.savefig(os.path.join(save_path, "loss_plot.png"))
-    plt.show()
+    saveModelToDisk(g, d, root_dir, save_path, model_config)
+    Utils.saveLosses(tr_g, tr_d, val_g, val_d, save_name, save_path)
+    Utils.sampleModel(trainer.generator, test_loader, save_path)
+    fid_score = Utils.computeFID(g, test_loader)
+    Utils.saveFID(fid_score, save_path)
+    ### END RECORD RESULTS ###
 
 # Sampling from GAN
-def eval():
+def evaluate(root_dir, model_config_name, dataset_name, model_dir):
+
     # Get configs
-    root_dir = os.getcwd()
-    dataset_name = "imagenet"
-    model_config_name = "srgan-medium-standard"
-    model_disk_name= "srgan-training-5"
-    model_dir = os.path.join(os.path.join(root_dir, "models"), model_disk_name)
     model_config, dataset_config = Utils.loadConfig(root_dir, model_config_name, dataset_name, pretrained=True, model_loc=model_dir)
 
     # Generator
@@ -114,44 +106,52 @@ def eval():
     n_resb = model_config['model']['gen_resid_blocks']
     cc = model_config['model']['conv_channels']
     scale = model_config['model']['scale_factor']
+    image_h, image_w = tuple(model_config['model']['crop_size'])
     g = Generator(b1k_sz, b1p_sz, n_resb, cc, scale)
-    model_load_name = 'srgan-training-5'
-
-    # Disciminator
-    dbs = model_config['model']['dis_blocks']
-    dp = model_config['model']['dis_dropout']
-    image_h = 96
-    image_w = 96
-    d = Discriminator(dbs, cc, dp, image_h, image_w)
-
     g, _ = loadModelFromDisk(root_dir, model_config_name, model_dir, image_h=image_h, image_w=image_w)
 
     # Create dataset
     dataset_dir = os.path.join(root_dir, dataset_config["dataset"]["path"])
-    trbatch_sz = dataset_config["dataset"]["trbatch"]
-    valbatch_sz = dataset_config["dataset"]["valbatch"]
     testbatch_sz = dataset_config["dataset"]["testbatch"]
     num_workers = dataset_config["dataset"]["numworkers"]
-
-    train_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subtrain"), scale, None, None, None, None)
-    val_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subval"), scale, None, None, None, None)
     test_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subtest"), scale, None, None, None, None)
-
-    # Seed split so that it is consistent across multiple runs
     test_loader = DataLoader(test_dataset, batch_size=testbatch_sz, shuffle=False, num_workers=num_workers)
 
-    # Train model
-    loaders = [test_loader, test_loader, test_loader]
-    trainer = PtTrainer(root_dir, g, d, loaders, model_config['training'])
-    trainer.sendToDevice()
-
-    Utils.show_images(trainer, test_loader, None)
-
-    # Compute FID Score
+    # Record metrics
+    Utils.sampleModel(g, test_loader, model_dir, "test_samples.png")
     fid = Utils.computeFID(g, test_loader)
-    print(fid)
+    Utils.saveFID(fid, model_dir, "fid_test.txt")
 
 if __name__ == "__main__":
-    #train()
-    eval()
-    #showSamples()
+
+    root_dir = os.getcwd()
+    # Parse command line arguments
+    parser = argparse.ArgumentParser()
+    # Required
+    parser.add_argument('-m', '--mode', choices=['train', 'test'], help='Select whether to train or evaluate', required=True)
+    # Optional
+    parser.add_argument('-c', '--config', choices=['srgan-small-standard', 'srgan-medium-standard'], default='srgan-medium-standard', help='Select model size')
+    parser.add_argument('-d', '--dataset', choices=['cifar', 'imagenet'], default='imagenet', help='Select dataset to use')
+    parser.add_argument('-md', '--modeldir', type=str, help='Directory for model on disk, defaults to chosen dataset')
+    parser.add_argument('-mn', '--modelname', type=str, help='Name of models directory, such as srgan-training-0')
+    parser.add_argument('-lrm', '--lrmethod', type=str, choices=['bicubic', 'gaussian'], default='bicubic', help='Method to use for creating low resolution images during training')
+    parser.add_argument('-s', '--savename', type=str, help='Name of saved model on disk')
+    # Save name
+    args = parser.parse_args()
+
+    if args.mode == 'train':
+        train(root_dir, args.config, args.dataset, args.modeldir, args.savename)
+    else:
+        model_dir = args.modeldir
+        if args.modelname is None:
+            parser.error('Model name is required for testing')
+        elif model_dir is None:
+            # If no model dir is provided, look in models/dataset for model. This is where training defaults to
+            model_dir = os.path.join(os.path.join(os.path.join(root_dir, "models"), args.dataset), args.modelname)
+        else:
+            model_dir = os.path.join(os.path.join(root_dir, model_dir), args.modelname)
+        # Assert that this location exists
+        if not os.path.exists(model_dir):
+            raise ValueError(f'Specified model directory: {model_dir} could not be found')
+
+        evaluate(args.config, args.dataset, model_dir) 

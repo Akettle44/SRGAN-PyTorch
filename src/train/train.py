@@ -104,8 +104,10 @@ class PtTrainer():
     def sendToDevice(self):
         """ Places objects on correct device prior to training
         """
-        self.generator = self.generator.to(self.device)
-        self.discriminator = self.discriminator.to(self.device)
+        if self.generator:
+            self.generator = self.generator.to(self.device)
+        if self.discriminator:
+            self.discriminator = self.discriminator.to(self.device)
 
     def pretrain(self):
         """ Pretrain the generator using only MSE loss

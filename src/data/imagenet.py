@@ -12,7 +12,7 @@ class ImageNetDataset(Dataset):
         Args:
             root_dir (str): Path to imagenet folder where classes live
             sf (int): Scale factor
-            lr_proc (str): Process used to generate LR images. Options: [guassian, bicubic]
+            lr_proc (str): Process used to generate LR images. Options: [gaussian, bicubic]
             cropsz (tuple, optional): Size of random crop. Defaults to (96, 96).
             blur_kernel_size (2D-tuple): W,H for blurring kernel operation
             sigma (2D-tuple): Variances

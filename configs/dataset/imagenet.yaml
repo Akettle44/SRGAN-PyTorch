@@ -4,7 +4,7 @@ dataset:
   trbatch: 128
   valbatch: 128
   testbatch: 8
-  numworkers: 16
+  numworkers: 8
   blur_kernel_size: [5, 9]
   sigmas: [0.1, 1.5]
   train_val_test_split: [0.7, 0.15, 0.15]

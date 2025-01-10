@@ -57,14 +57,39 @@ class Utils():
         return model_config, dataset_config
 
     @staticmethod
-    def show_images(trainer, loader, save_path):
+    def saveLosses(trl_g, trl_d, vl_g, vl_d, model_name, save_path):
+        """ Save the loss plot to a figure
+
+        Args:
+            trl_g (torch.tensor): training loss generator
+            trl_d (torch.tensor): training loss discriminator
+            vl_g (torch.tensor):  validation loss generator
+            vl_d (torch.tensor):  validation loss discriminator
+        """
+        # Plot loss results (show it decreases)
+        plt.plot(range(len(trl_g)), trl_g, label="Training Loss Generator", color='blue')
+        plt.plot(range(len(trl_d)), trl_d, label="Training Loss Discriminator", color='orange')
+        plt.plot(range(len(vl_g)), vl_g, label="Validation Loss Generator", color='mediumseagreen')
+        plt.plot(range(len(vl_d)), vl_d, label="Validation Loss Discriminator", color='crimson')
+        plt.title(f"Training curves for {model_name}")
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.legend()
+        plt.savefig(os.path.join(save_path, "loss_plot.png"))
+
+    @staticmethod
+    def sampleModel(generator, loader, save_path, save_name="samples.png"):
+
+        generator.eval() 
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
         # Images, labels to device               
         images, labels = next(iter(loader))
-        images_cuda = images.to('cuda')
+        images_cuda = images.to(device)
+        generator = generator.to(device)
 
         # Forward pass
-        gens = trainer.generator(images_cuda)
+        gens = generator(images_cuda)
         gens = gens.detach().cpu()
 
         # Normalize from [0, 1] to [0, 255]
@@ -90,9 +115,7 @@ class Utils():
             if i == 0: plt.title("HR")
 
         if save_path:
-            plt.savefig(os.path.join(save_path, "test_set_plot.png"))
-
-        plt.show()
+            plt.savefig(os.path.join(save_path, save_name))
 
     @staticmethod
     def computeFID(generator, dloader):
@@ -130,76 +153,57 @@ class Utils():
         return fid.compute() 
 
     @staticmethod
-    def showSamples():
-        """ Show samples from different parts of training
+    def saveFID(fid_score, save_path, file_name='fid_score.txt'):
+        """ Write FID Score to Disk
+
+        Args:
+            fid_score (float)
+            save_path (str): Path to directory
         """
-        # Paths
-        root_dir = os.getcwd()
-        model_dir = os.path.join(root_dir, 'models')
+        with open(os.path.join(save_path, file_name), 'w') as f:
+            f.write(str(fid_score.item()))
 
-        dataset_name = "CIFAR10"
+    @staticmethod
+    def showSamples(generators: list, gen_labels: list, dataloader):
+        """ Show samples from different generators
 
-        # Load Hyperparameters
-        hyps = Utils.loadHypsFromDisk(os.path.join(os.path.join(model_dir, 'hyps'), dataset_name + '.txt'))
+        Args:
+            generators (list): Different Generator models
+            gen_labels (list): Label for each generator (e.g. MSE-Only)
+            dataloader (torch.Dataloader): Where to import data from
+        """
 
-        # Dataset
-        blur_kernel_size = (3,7)
-        sigma = (0.1,1.5)
-        batch_size_train = hyps["trbatch"]
-        batch_size_val = hyps["valbatch"]
-        num_workers = hyps["numworkers"]
+        # Sample batch from dataloader
+        lr, hr = next(iter(dataloader))
 
-        # Create dataset
-        dataset_dir = os.path.join(os.path.join(root_dir, "datasets"), dataset_name.lower())
-        if dataset_name == "ImageNet":
-            dataset = ImageNetDataset(dataset_dir, blur_kernel_size, sigma, batch_size_train, num_workers)
-        elif dataset_name == "CIFAR10":
-            dataset = CIFAR10Dataset(dataset_dir, blur_kernel_size, sigma, batch_size_train, num_workers)
-        
-        train_val_test_split = [.7,.15,.15]
-        train_dataset, val_dataset, test_dataset = random_split(dataset, train_val_test_split, generator=torch.Generator().manual_seed(42))
-        test_loader = DataLoader(test_dataset, batch_size=3, shuffle=False, num_workers=num_workers)
+        # Grab samples from models
+        samples = []
+        for g in generators:
+            samples.append(g(lr).detach())
 
-        # Load Models
-        mse_model = f"SRGAN_epoch_{5}_scale_{hyps['scale']}_k3_21"
-        mse_path = os.path.join(model_dir, "cifar/generator_block12_k3/" + mse_model)
-        gmse, _ = loadModelFromDisk(mse_path, hyps)
-
-        feat_model = f"SRGAN_epoch_{5}_scale_{hyps['scale']}_k3_21_feat"
-        feat_path = os.path.join(model_dir, "cifar/generator_block12_k3/" + feat_model)
-        gfeat, _ = loadModelFromDisk(feat_path, hyps)
-
-        distf_model = f"SRGAN_epoch_{5}_scale_{hyps['scale']}_k3_7_feat"
-        distf_path = os.path.join(model_dir, "cifar/generator_block12_k3/" + distf_model)
-        gdistf, _ = loadModelFromDisk(distf_path, hyps)
-
-        lr, hr = next(iter(test_loader))
-        mse_gens = gmse(lr).detach()
-        feat_gens = gfeat(lr).detach()
-        distf_gens = gdistf(lr).detach()
-
-        #lr = (lr * 255).byte()
         # Concatenate images together
-        images = [lr, hr, mse_gens, feat_gens, distf_gens]
+        images = [lr, hr, samples[:]]
+        names = ["lr", "hr", gen_labels[:]]
 
-        # Plotting the concatenated images
-        fig, axes = plt.subplots(3, 5, figsize=(8, 5))
+        # Plot the concatenated images
+        fig, axes = plt.subplots(3, len(images), figsize=(8, 5))
+        axes = axes.flatten()
         plt.tight_layout(pad=0.5, w_pad=0.5, h_pad=0.5)
-        axes[0,0].set_title("LR")
-        axes[0,1].set_title("HR")
-        axes[0,2].set_title("MSE-Only")
-        axes[0,3].set_title("Feat")
-        axes[0,4].set_title("Dist Failure")
         fig.patch.set_facecolor('white')
+        # Label axes
+        for idx, ax in enumerate(axes):
+            row = idx % 3
+            col = idx % len(images)
+            
+            # Label each column
+            if row == 0:
+                ax.set_title(names[idx % 3])
 
-        for i in range(lr.shape[0]):
-            for j in range(len(images)):
-                img = images[j][i].permute((1, 2, 0))  # Convert (C, H, W) to (H, W, C)
-                # Normalize high resolution images from [-1, 1] to [0, 255]
-                if j != 0:
-                    img = (((img + 1) / 2) * 255).byte()
-                axes[i,j].imshow(img)
-                axes[i,j].axis('on')
+            image = images[idx].permute((1, 2, 0)) # Convert (C, H, W) to (H, W, C)
+            if col != 0:
+                img = (((img + 1) / 2) * 255).byte()
+                ax.imshow(image)
+                ax.axis('on')
 
         plt.tight_layout()
         plt.show()
