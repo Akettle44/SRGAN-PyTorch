@@ -11,12 +11,14 @@ model:
 
 training:
   pretrain_epochs: 2
-  epochs: 3
+  epochs: 2
   g_opt: 'adam'
   d_opt: 'adam'
+  pre_g_lr: 1.0e-4
   g_lr: 1.0e-4
   d_lr: 1.0e-4
-  g_sched: null # 'plateau'
-  d_sched: null
+  pre_g_sched: 'plateau' # 'plateau'
+  g_sched: 'multi'
+  d_sched: 'multi'
   loss: 'perceptual' # mse or perceptual
   loss_extractor: 'models/loss/vgg19_imagenet.pth'
