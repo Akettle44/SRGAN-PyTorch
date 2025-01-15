@@ -46,11 +46,10 @@ def loadModelFromDisk(root_dir, model_config_name, model_dir, \
     # Generator
     gen_state_dict = torch.load(os.path.join(model_dir, 'generator.pth'))
     b1k_sz = model_config['model']['gen_block_1_kernel_size']
-    b1p_sz = model_config['model']['gen_block_1_padding_size']
     n_resb = model_config['model']['gen_resid_blocks']
     cc = model_config['model']['conv_channels']
     scale = model_config['model']['scale_factor']
-    g = Generator(b1k_sz, b1p_sz, n_resb, cc, scale)
+    g = Generator(b1k_sz, n_resb, cc, scale)
     g.load_state_dict(gen_state_dict)
 
     # Disciminator

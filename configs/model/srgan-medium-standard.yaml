@@ -2,7 +2,6 @@ model:
   name: 'srgan-medium-standard'
   scale_factor: 4 # Should be power of 2
   gen_block_1_kernel_size: 9 
-  gen_block_1_padding_size: 4
   gen_resid_blocks: 16
   dis_blocks: 4 # includes first mandatory block
   conv_channels: 64 # Used by generator and discriminator
@@ -10,12 +9,12 @@ model:
   dis_dropout: 0.0
 
 training:
-  pretrain_epochs: 30
-  epochs: 50
+  pretrain_epochs: 15
+  epochs: 15
   g_opt: 'adam'
   d_opt: 'adam'
-  pre_g_lr: 1.0e-4
-  g_lr: 1.0e-4
+  pre_g_lr: 5.0e-4
+  g_lr: 5.0e-4
   d_lr: 1.0e-4
   pre_g_sched: 'plateau' # 'plateau'
   g_sched: 'multi'

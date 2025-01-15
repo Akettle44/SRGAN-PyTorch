@@ -19,11 +19,10 @@ def train(root_dir, model_config_name, dataset_name, model_dir, save_name):
     ### MODEL ###
     # Generator
     b1k_sz = model_config['model']['gen_block_1_kernel_size']
-    b1p_sz = model_config['model']['gen_block_1_padding_size']
     n_resb = model_config['model']['gen_resid_blocks']
     cc = model_config['model']['conv_channels']
     scale = model_config['model']['scale_factor']
-    g = Generator(b1k_sz, b1p_sz, n_resb, cc, scale)
+    g = Generator(b1k_sz, n_resb, cc, scale)
     #summary(g, (3, 24, 24))
 
     # Disciminator
@@ -102,12 +101,11 @@ def evaluate(root_dir, model_config_name, dataset_name, model_dir):
 
     # Generator
     b1k_sz = model_config['model']['gen_block_1_kernel_size']
-    b1p_sz = model_config['model']['gen_block_1_padding_size']
     n_resb = model_config['model']['gen_resid_blocks']
     cc = model_config['model']['conv_channels']
     scale = model_config['model']['scale_factor']
     image_h, image_w = tuple(model_config['model']['crop_size'])
-    g = Generator(b1k_sz, b1p_sz, n_resb, cc, scale)
+    g = Generator(b1k_sz, n_resb, cc, scale)
     g, _ = loadModelFromDisk(root_dir, model_config_name, model_dir, image_h=image_h, image_w=image_w)
 
     # Create dataset

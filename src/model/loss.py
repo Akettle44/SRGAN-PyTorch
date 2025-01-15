@@ -1,7 +1,7 @@
 ### Loss Functions for SRGAN
 
 import torch
-import torchvision
+import torchvision.transforms as transforms
 import torch.nn.functional as F
 
 # Perceptual Loss Function from SRGAN Paper
@@ -104,10 +104,22 @@ class FeatureNetwork(torch.nn.Module):
         self.selectPresetAndLoad(featureModelChoice)
         self.features = {}
         self.registerHooks()
+        self.mean = [0.485, 0.456, 0.406] # Specific to imagenet!
+        self.std = [0.229, 0.224, 0.225]
+        self.normalize = transforms.Normalize(mean=self.mean, std=self.std)
+
+    def preproc(self, x):
+        """ Preprocess the images to shift from [-1, 1] to [0, 1]
+            and normalize using imagenet mean and variances        
+        """
+        x = 0.5 * (x + 1) # Shift to [0, 1]
+        x = self.normalize(x)
+        return x
 
     # Forward pass (ignore output, feature representation
     # auto populated from hook)
     def forward(self, x):
+        x = self.preproc(x)
         x = self.model(x)
         return x 
 
@@ -138,10 +150,10 @@ class FeatureNetwork(torch.nn.Module):
                 self.model = self.model.to(self.device)
                 self.model.eval()
             case "vgg19":
-                # 19 is after the 5th Conv / ReLU 
+                # 5_4 is 5th BLOCK, not 5th conv, there can be multiple convs per block
                 # Got this number by printing out vgg.features and looking
                 # at enumeration of sequential
-                self.preset = {"name": "vgg19", "layeridx": 11}
+                self.preset = {"name": "vgg19", "layeridx": 35}
 
                 # Load model from disk
                 self.model = torch.load(self.model_path)
