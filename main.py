@@ -49,14 +49,14 @@ def train(root_dir, model_config_name, dataset_name, model_dir, save_name):
 
     # Create dataset
     if 'cifar' in dataset_name:
-        dataset = TaskFactory.createTaskDataSet(dataset_name, dataset_dir, scale, None, None, None, None)
+        dataset = TaskFactory.createTaskDataSet(dataset_name, dataset_dir, scale)
         train_val_test_split = [.7,.15,.15]
         # Seed split so that it is consistent across multiple runs
         train_dataset, val_dataset, test_dataset = random_split(dataset, train_val_test_split, generator=torch.Generator().manual_seed(42))
     elif 'imagenet' in dataset_name:
-        train_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subtrain"), scale, None, None, None, None)
-        val_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subval"), scale, None, None, None, None)
-        test_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subtest"), scale, None, None, None, None)
+        train_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subtrain"), scale)
+        val_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subval"), scale)
+        test_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subtest"), scale)
     else:
         raise ValueError(f"Dataset: {dataset_name} is not currently supported")
 
@@ -104,7 +104,13 @@ def evaluate(root_dir, model_config_name, dataset_name, model_dir):
     n_resb = model_config['model']['gen_resid_blocks']
     cc = model_config['model']['conv_channels']
     scale = model_config['model']['scale_factor']
-    image_h, image_w = tuple(model_config['model']['crop_size'])
+    match dataset_name:
+        case "imagenet":
+            image_h, image_w = 256, 256 
+        case "cifar":
+            image_h, image_w = 32, 32
+        case _:
+            raise ValueError("Dataset name is invalid")
     g = Generator(b1k_sz, n_resb, cc, scale)
     g, _ = loadModelFromDisk(root_dir, model_config_name, model_dir, image_h=image_h, image_w=image_w)
 
@@ -112,7 +118,7 @@ def evaluate(root_dir, model_config_name, dataset_name, model_dir):
     dataset_dir = os.path.join(root_dir, dataset_config["dataset"]["path"])
     testbatch_sz = dataset_config["dataset"]["testbatch"]
     num_workers = dataset_config["dataset"]["numworkers"]
-    test_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subtest"), scale, None, None, None, None)
+    test_dataset = TaskFactory.createTaskDataSet(dataset_name, os.path.join(dataset_dir, "subtest"), scale, cropsz=(image_h, image_w))
     test_loader = DataLoader(test_dataset, batch_size=testbatch_sz, shuffle=False, num_workers=num_workers)
 
     # Record metrics
@@ -152,4 +158,4 @@ if __name__ == "__main__":
         if not os.path.exists(model_dir):
             raise ValueError(f'Specified model directory: {model_dir} could not be found')
 
-        evaluate(args.config, args.dataset, model_dir) 
+        evaluate(root_dir, args.config, args.dataset, model_dir) 
