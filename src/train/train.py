@@ -208,13 +208,13 @@ class PtTrainer():
         #torch.autograd.set_detect_anomaly(True)
         
         ### PROFILING ###
-        schedule = torch.profiler.schedule(
-            wait=20,      # skip the first iteration
-            warmup=5,    # warm up for one iteration
-            active=10,     # only profile 5 iterations
-            repeat=10,  # Repeat 10 times
-            skip_first=True
-        )
+        #schedule = torch.profiler.schedule(
+        #    wait=20,      # skip the first iteration
+        #    warmup=5,    # warm up for one iteration
+        #    active=10,     # only profile 5 iterations
+        #    repeat=10,  # Repeat 10 times
+        #    skip_first=True
+        #)
 
 
         # Load optimizer + loss + schedulers
