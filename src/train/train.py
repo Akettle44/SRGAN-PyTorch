@@ -347,7 +347,6 @@ class PtTrainer():
             #prof.export_chrome_trace("trace.json")
 
         return train_loss_g, train_loss_d, val_loss_g, val_loss_d
-    
 
     def test(self):
 
