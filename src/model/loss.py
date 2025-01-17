@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 # Perceptual Loss Function from SRGAN Paper
 class PerceptualLoss(torch.nn.Module):
-    def __init__(self, loss_choice, p_weight=10e-3, featureModel="vgg19", model_path=None):
+    def __init__(self, loss_choice, p_weight=10e-3, featureModel="resnet50", model_path=None):
         super(PerceptualLoss, self).__init__()
         self.loss_choice = loss_choice
         self.p_weight = p_weight
@@ -16,6 +16,7 @@ class PerceptualLoss(torch.nn.Module):
             self.featureNetwork = None
         self.mse = torch.nn.MSELoss()
 
+    #@torch.autocast(device_type="cuda")
     def forward(self, hr_fake, hr_real, d_fake, d_real):
         """ Compute the perceptual loss for SRGAN
 
@@ -106,18 +107,20 @@ class FeatureNetwork(torch.nn.Module):
         self.registerHooks()
         self.mean = [0.485, 0.456, 0.406] # Specific to imagenet!
         self.std = [0.229, 0.224, 0.225]
-        self.normalize = transforms.Normalize(mean=self.mean, std=self.std)
+        self.normalize = transforms.Normalize(mean=self.mean, std=self.std, inplace=True)
 
     def preproc(self, x):
         """ Preprocess the images to shift from [-1, 1] to [0, 1]
             and normalize using imagenet mean and variances        
         """
         x = 0.5 * (x + 1) # Shift to [0, 1]
-        x = self.normalize(x)
+        y = x.clone()
+        self.normalize(x) # Done in place
         return x
 
     # Forward pass (ignore output, feature representation
     # auto populated from hook)
+    @torch.autocast(device_type="cuda")
     def forward(self, x):
         x = self.preproc(x)
         x = self.model(x)
@@ -165,6 +168,15 @@ class FeatureNetwork(torch.nn.Module):
                 # Place on device in inference mode
                 self.model = self.model.to(self.device)
                 self.model.eval()
+            case "resnet50":
+                # 4 corresponds to final block of resnet
+                self.preset = {"name": "resnet50", "layeridx": 4}
+
+                # Load model from disk
+                self.model = torch.load(self.model_path)
+                self.model = self.model.to(self.device)
+                self.model.eval()
+
             case _:
                 raise(NotImplementedError)
 
@@ -180,9 +192,18 @@ class FeatureNetwork(torch.nn.Module):
         def hook_fn(module, input, output):
             self.features['feats'] = output.detach()
 
-        # Register hook
-        idx = self.preset["layeridx"]
-        self.hook_handle = self.model.features[idx].register_forward_hook(hook_fn)
+        if 'vgg' in self.preset['name']:
+            # Register hook
+            idx = self.preset["layeridx"]
+            self.hook_handle = self.model.features[idx].register_forward_hook(hook_fn)
+        elif 'resnet' in self.preset['name']:
+            # Register hook
+            idx = self.preset["layeridx"]
+            children_list = list(self.model.children())
+            self.hook_handle = children_list[idx].register_forward_hook(hook_fn)
+        else:
+            raise ValueError("Model type not supported")
+
 
     """ 
     # Used if model ever needs to be directly modified

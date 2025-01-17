@@ -9,8 +9,8 @@ model:
   dis_dropout: 0.0
 
 training:
-  pretrain_epochs: 15
-  epochs: 15
+  pretrain_epochs: 0
+  epochs: 1
   g_opt: 'adam'
   d_opt: 'adam'
   pre_g_lr: 5.0e-4
@@ -20,4 +20,4 @@ training:
   g_sched: 'multi'
   d_sched: 'multi'
   loss: 'perceptual' # mse or perceptual
-  loss_extractor: 'models/loss/vgg19_imagenet.pth'
+  loss_extractor: 'models/loss/resnet50_imagenet.pth'

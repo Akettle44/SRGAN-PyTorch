@@ -5,6 +5,7 @@ import os
 from tqdm import tqdm
 from src.model.loss import PerceptualLoss
 from torchsummary import summary
+from torch.profiler import profile, record_function, ProfilerActivity
 
 class PtTrainer():
 
@@ -205,6 +206,16 @@ class PtTrainer():
         """ Train the model
         """        
         #torch.autograd.set_detect_anomaly(True)
+        
+        ### PROFILING ###
+        schedule = torch.profiler.schedule(
+            wait=20,      # skip the first iteration
+            warmup=5,    # warm up for one iteration
+            active=10,     # only profile 5 iterations
+            repeat=10,  # Repeat 10 times
+            skip_first=True
+        )
+
 
         # Load optimizer + loss + schedulers
         loss, g_sched, d_sched = self.setupTraining()
@@ -213,6 +224,10 @@ class PtTrainer():
         train_loss_d = []
         val_loss_g = []
         val_loss_d = []
+
+        # Profile Training
+        #with profile(activities=[ProfilerActivity.CUDA], schedule=schedule) as prof:
+        #    with record_function("GAN_model_training"):
 
         for epoch in range(self.hyps['epochs']):
 
@@ -259,6 +274,8 @@ class PtTrainer():
                 # Training losses
                 train_g_epoch_loss.append(g_loss.item())
                 train_d_epoch_loss.append(d_loss.item())
+
+                #prof.step()
 
             # Average loss and accuracy over epoch
             train_loss_g.append(torch.mean(torch.tensor(train_g_epoch_loss)))
@@ -324,6 +341,10 @@ class PtTrainer():
                 g_sched.step()
             if d_sched:
                 d_sched.step()
+
+            # More profiling
+            #print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+            #prof.export_chrome_trace("trace.json")
 
         return train_loss_g, train_loss_d, val_loss_g, val_loss_d
     

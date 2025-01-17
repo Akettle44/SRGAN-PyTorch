@@ -17,6 +17,7 @@ class ResidualBlock(nn.Module):
         self.conv2 = nn.Conv2d(channel, channel, kernel_size=3, padding='same')
         self.bn2 = nn.BatchNorm2d(channel)
     
+    #@torch.autocast(device_type="cuda")
     def forward(self, x):
         output = self.conv1(x)
         output = self.bn1(output)
@@ -40,6 +41,7 @@ class UpSample(nn.Module):
         self.pixshuff = nn.PixelShuffle(self.up_scale)
         self.perlu = nn.PReLU()
 
+    #@torch.autocast(device_type="cuda")
     def forward(self, x):
         x = self.conv(x)
         x = self.pixshuff(x)
@@ -77,6 +79,7 @@ class Generator(nn.Module):
         # Final conv to clean up upsampled feature representation
         self.convout = nn.Sequential(nn.Conv2d(conv_channels, 3, kernel_size=3, padding='same'))
 
+    #@torch.autocast(device_type="cuda")
     def forward(self, x):
         x = self.fextraction(x)
         out = self.resblocks(x)
@@ -108,6 +111,7 @@ class DisBlock(nn.Module):
             nn.LeakyReLU(0.2)
         )
     
+    #@torch.autocast(device_type="cuda")
     def forward(self, x):
         return self.dblock(x)
 
@@ -144,6 +148,7 @@ class Discriminator(nn.Module):
             nn.Linear(1024, 1)
         )
 
+    #@torch.autocast(device_type="cuda")
     def forward(self, x):
         batch_size = x.size(0)
         out = self.fextraction(x)

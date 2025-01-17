@@ -61,9 +61,9 @@ def train(root_dir, model_config_name, dataset_name, model_dir, save_name):
         raise ValueError(f"Dataset: {dataset_name} is not currently supported")
 
     # Create Dataloaders
-    train_loader = DataLoader(train_dataset, batch_size=trbatch_sz, shuffle=True, num_workers=num_workers)
-    val_loader = DataLoader(val_dataset, batch_size=valbatch_sz, shuffle=False, num_workers=num_workers)
-    test_loader = DataLoader(test_dataset, batch_size=testbatch_sz, shuffle=False, num_workers=num_workers)
+    train_loader = DataLoader(train_dataset, batch_size=trbatch_sz, shuffle=True, num_workers=num_workers, drop_last=True)
+    val_loader = DataLoader(val_dataset, batch_size=valbatch_sz, shuffle=False, num_workers=num_workers, drop_last=True)
+    test_loader = DataLoader(test_dataset, batch_size=testbatch_sz, shuffle=False, num_workers=num_workers, drop_last=True)
     ### END DATASET ###
 
     ### TRAINING ###
