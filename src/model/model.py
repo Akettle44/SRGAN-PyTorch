@@ -11,12 +11,13 @@ class ResidualBlock(nn.Module):
     '''
     def __init__(self, channel):
         super(ResidualBlock, self).__init__()
-        self.conv1 = nn.Conv2d(channel, channel, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(channel, channel, kernel_size=3, padding='same')
         self.bn1 = nn.BatchNorm2d(channel)
         self.perlu = nn.PReLU()
-        self.conv2 = nn.Conv2d(channel, channel, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(channel, channel, kernel_size=3, padding='same')
         self.bn2 = nn.BatchNorm2d(channel)
     
+    #@torch.autocast(device_type="cuda")
     def forward(self, x):
         output = self.conv1(x)
         output = self.bn1(output)
@@ -36,10 +37,11 @@ class UpSample(nn.Module):
     def __init__(self, channel_in, scale):
         super(UpSample, self).__init__()
         self.up_scale = int(math.sqrt(scale))
-        self.conv = nn.Conv2d(channel_in, channel_in * self.up_scale**2, kernel_size=3, padding=1)
+        self.conv = nn.Conv2d(channel_in, channel_in * self.up_scale**2, kernel_size=3, padding='same')
         self.pixshuff = nn.PixelShuffle(self.up_scale)
         self.perlu = nn.PReLU()
 
+    #@torch.autocast(device_type="cuda")
     def forward(self, x):
         x = self.conv(x)
         x = self.pixshuff(x)
@@ -50,14 +52,14 @@ class Generator(nn.Module):
     '''
     SRGAN Generator
     '''
-    def __init__(self, block_1_k_size, block_1_padding, num_resid_blocks, conv_channels, \
+    def __init__(self, block_1_k_size, num_resid_blocks, conv_channels, \
                  scale):
         super(Generator, self).__init__()
 
         # Initial feature extraction
         # Kernel size should be tuned to size of images
         self.fextraction = nn.Sequential(
-            nn.Conv2d(3, conv_channels, kernel_size=block_1_k_size, padding=block_1_padding),
+            nn.Conv2d(3, conv_channels, kernel_size=block_1_k_size, padding='same'),
             nn.PReLU()
         )
 
@@ -67,7 +69,7 @@ class Generator(nn.Module):
 
         # Consolidate features from residual extraction
         self.fconsolidation = nn.Sequential(
-            nn.Conv2d(conv_channels, conv_channels, kernel_size=3, padding=1),
+            nn.Conv2d(conv_channels, conv_channels, kernel_size=3, padding='same'),
             nn.BatchNorm2d(conv_channels)
         )
 
@@ -75,8 +77,9 @@ class Generator(nn.Module):
         self.uplayers = nn.Sequential(*[UpSample(conv_channels, scale) for i in range(int(math.log2(scale)))])
 
         # Final conv to clean up upsampled feature representation
-        self.convout = nn.Sequential(nn.Conv2d(conv_channels, 3, kernel_size=3, padding=1))
+        self.convout = nn.Sequential(nn.Conv2d(conv_channels, 3, kernel_size=3, padding='same'))
 
+    #@torch.autocast(device_type="cuda")
     def forward(self, x):
         x = self.fextraction(x)
         out = self.resblocks(x)
@@ -100,7 +103,7 @@ class DisBlock(nn.Module):
     def __init__(self, cc):
         super(DisBlock, self).__init__()
         self.dblock = nn.Sequential(
-            nn.Conv2d(cc, cc, kernel_size=3, padding=1),
+            nn.Conv2d(cc, cc, kernel_size=3, padding='same'),
             nn.BatchNorm2d(cc),
             nn.LeakyReLU(0.2),
             nn.Conv2d(cc, cc * 2, kernel_size=3, padding=1, stride=2),
@@ -108,6 +111,7 @@ class DisBlock(nn.Module):
             nn.LeakyReLU(0.2)
         )
     
+    #@torch.autocast(device_type="cuda")
     def forward(self, x):
         return self.dblock(x)
 
@@ -122,7 +126,7 @@ class Discriminator(nn.Module):
         self.fextraction = nn.Sequential(
             nn.Conv2d(3, cc, kernel_size=3, padding=1),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(cc, cc * 2, kernel_size=3, padding=1, stride=2),
+            nn.Conv2d(cc, cc * 2, kernel_size=3, stride=2),
             nn.BatchNorm2d(cc * 2),
             nn.LeakyReLU(0.2)
         )
@@ -144,6 +148,7 @@ class Discriminator(nn.Module):
             nn.Linear(1024, 1)
         )
 
+    #@torch.autocast(device_type="cuda")
     def forward(self, x):
         batch_size = x.size(0)
         out = self.fextraction(x)

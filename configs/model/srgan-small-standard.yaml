@@ -2,7 +2,6 @@ model:
   name: 'srgan-small-standard'
   scale_factor: 4 # Should be power of 2
   gen_block_1_kernel_size: 3 
-  gen_block_1_padding_size: 1 
   gen_resid_blocks: 8
   dis_blocks: 3 # includes first mandatory block
   conv_channels: 64 # Used by generator and discriminator
