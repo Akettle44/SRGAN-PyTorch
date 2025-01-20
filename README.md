@@ -41,11 +41,10 @@ CIFAR10:
 We found super-resolution difficult to work with on CIFAR10. We trained hundreds of models, but were never able to reduce the FID score below ~80. The MSE trained model achieved 85.04, whereas the Feature Based loss marginally improved to an FID score of 84.8. We hypothesize that the 8x8x3 low resolution images may not contain enough information to learn a general probability distribution. 
 
 ImageNet:
-We were able to achieve an FID score of ~40 on a 250k subsample of imagenet. At the time of writing, perceptual loss using VGG19 outperforms ResNet50. Samples from the testset are shared below. We are actively working on improving the sharpness of the images but compute remains a constraint. 
+We achieved a FID score of 18 on a 250k subsample of imagenet. At the time of writing, MSE outperforms perceptual loss and perceptual loss using VGG19 outperforms ResNet50. Samples from the testset are shared below. We are actively working on improving the sharpness of the images but compute remains a constraint. 
 
 <p align="center">
-    <img src="figures/bird.png" alt="Bird" width="450" height="150"/>
-    <img src="figures/elephant.png" alt="Elephant" width="450" height="150"/>
+    <img src="figures/Batch_1.png" alt="Samples" width="950" height="750"/>
 </p>
 
 ## Active Contributors
