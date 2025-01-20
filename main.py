@@ -122,6 +122,7 @@ def evaluate(root_dir, model_config_name, dataset_name, model_dir):
     test_loader = DataLoader(test_dataset, batch_size=testbatch_sz, shuffle=False, num_workers=num_workers)
 
     # Record metrics
+    #Utils.showSamples([g], ['MSE'], test_loader)
     Utils.sampleModel(g, test_loader, model_dir, "test_samples.png")
     fid = Utils.computeFID(g, test_loader)
     Utils.saveFID(fid, model_dir, "fid_test.txt")

@@ -131,7 +131,6 @@ class Utils():
         generator.eval() 
         fid = FrechetInceptionDistance(device=device)
         generator = generator.to(device)
-        scores = []
         with torch.no_grad():
             for batch in dloader:
                 # Images, labels to device               
@@ -170,40 +169,43 @@ class Utils():
         Args:
             generators (list): Different Generator models
             gen_labels (list): Label for each generator (e.g. MSE-Only)
-            dataloader (torch.Dataloader): Where to import data from
+            dataloader (torch.Dataloader): Where to import data from.
         """
 
         # Sample batch from dataloader
-        lr, hr = next(iter(dataloader))
-
+        it = iter(dataloader)
+        lr, hr = next(it)
+        
         # Grab samples from models
         samples = []
         for g in generators:
-            samples.append(g(lr).detach())
+            ret = g(lr).detach()
+            samples.append(ret)
 
         # Concatenate images together
-        images = [lr, hr, samples[:]]
-        names = ["lr", "hr", gen_labels[:]]
+        images = [lr, hr] + samples
+        labels = ['lr', 'hr'] + gen_labels
 
         # Plot the concatenated images
-        fig, axes = plt.subplots(3, len(images), figsize=(8, 5))
-        axes = axes.flatten()
+        # Figure size: 3 (lr, hr, sr) x # of images in batch
+        fig, axes = plt.subplots(dataloader.batch_size, len(labels), figsize=(8, 5))
         plt.tight_layout(pad=0.5, w_pad=0.5, h_pad=0.5)
         fig.patch.set_facecolor('white')
-        # Label axes
-        for idx, ax in enumerate(axes):
-            row = idx % 3
-            col = idx % len(images)
-            
-            # Label each column
-            if row == 0:
-                ax.set_title(names[idx % 3])
 
-            image = images[idx].permute((1, 2, 0)) # Convert (C, H, W) to (H, W, C)
-            if col != 0:
-                img = (((img + 1) / 2) * 255).byte()
-                ax.imshow(image)
-                ax.axis('on')
+        # Label axes
+        for c, name in enumerate(labels):
+            for r, image in enumerate(images[c]):
+                # Set Title
+                axes[0,c].set_title(name)
+
+                # Isolate images, Convert (C, H, W) to (H, W, C)
+                image = image.permute((1, 2, 0))
+                if c != 0: # lr already in 0, 1
+                    image = (((image + 1) / 2) * 255).byte()
+
+                # Display image
+                axes[r, c].imshow(image)
+                axes[r, c].axis('on')
 
         plt.tight_layout()
         plt.show()
