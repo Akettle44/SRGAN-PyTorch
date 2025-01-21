@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 # Perceptual Loss Function from SRGAN Paper
 class PerceptualLoss(torch.nn.Module):
-    def __init__(self, loss_choice, p_weight=10e-3, featureModel="resnet50", model_path=None):
+    def __init__(self, loss_choice, p_weight=10e-3, featureModel="vgg19", model_path=None):
         super(PerceptualLoss, self).__init__()
         self.loss_choice = loss_choice
         self.p_weight = p_weight
@@ -17,8 +17,8 @@ class PerceptualLoss(torch.nn.Module):
         self.mse = torch.nn.MSELoss()
 
     #@torch.autocast(device_type="cuda")
-    def forward(self, hr_fake, hr_real, d_fake, d_real):
-        """ Compute the perceptual loss for SRGAN
+    def forward(self, hr_fake, hr_real, d_fake, d_real, compute_g=False, compute_d=False):
+        """ Compute the perceptual loss for SRGAN using flags for discrim and generator
 
         Args:
             hr_fake (batch, image.dims): Predicted high resolution images
@@ -27,9 +27,15 @@ class PerceptualLoss(torch.nn.Module):
         Returns:
             d_loss, g_loss: Loss for discriminator and generator
         """
-        g_loss = self.GLoss(hr_fake, hr_real, d_fake)
-        #d_loss = self.DLoss_lsgan(d_fake, d_real)
-        d_loss = self.DLoss(d_fake, d_real)
+        g_loss = None
+        d_loss = None
+
+        if compute_d:
+            #d_loss = self.DLoss_lsgan(d_fake, d_real)
+            d_loss = self.DLoss(d_fake, d_real)
+
+        if compute_g:
+            g_loss = self.GLoss(hr_fake, hr_real, d_fake)
 
         return d_loss, g_loss
 
@@ -72,7 +78,9 @@ class PerceptualLoss(torch.nn.Module):
                 raise(NotImplementedError)
 
         # Compute adverserial loss
-        l_a = -1 * torch.mean(torch.log(d_fake), dim=0)
+        eps = 1e-7
+        d_fake = torch.clamp(d_fake, eps, 1 - eps)     
+        l_a = -1 * torch.mean(torch.log(d_fake + eps), dim=0)
         # Perform perceptual weighting
         g_loss = l_c + self.p_weight * l_a
 
@@ -90,8 +98,12 @@ class PerceptualLoss(torch.nn.Module):
         Returns:
             d_loss: Discriminator loss
         """
-        d_loss_real = F.binary_cross_entropy(d_real, torch.ones_like(d_real))
+        # Safe guard numerical precision
+        d_fake = torch.clamp(d_fake, 1e-7, 1 - 1e-7)     
+        d_real = torch.clamp(d_real, 1e-7, 1 - 1e-7)     
+
         d_loss_fake = F.binary_cross_entropy(d_fake, torch.zeros_like(d_fake))
+        d_loss_real = F.binary_cross_entropy(d_real, torch.ones_like(d_real))
         d_loss = d_loss_real + d_loss_fake 
         return d_loss
 
