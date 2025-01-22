@@ -44,7 +44,7 @@ ImageNet:
 We achieved a FID score of 18 on a 250k subsample of imagenet. At the time of writing, MSE outperforms perceptual loss and perceptual loss using VGG19 outperforms ResNet50. Samples from the testset are shared below. We are actively working on improving the sharpness of the images but compute remains a constraint. 
 
 <p align="center">
-    <img src="figures/Batch_1.png" alt="Samples" width="950" height="750"/>
+    <img src="figures/Batch_1.png" alt="Samples" width="750" height="1100"/>
 </p>
 
 ## Active Contributors

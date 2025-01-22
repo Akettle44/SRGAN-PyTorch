@@ -248,28 +248,31 @@ class PtTrainer():
                 images = images.to(self.device)
                 labels = labels.to(self.device)
 
-                # Forward pass
+                ### UPDATE DISCRIMINATOR ###
+                # Detach generations to prevent generator gradients from being updated
                 gens = self.generator(images)
-                gens_detached = gens.detach() # Detach generations to prevent interference
+                gens_detached = gens.detach()
                 d_fake = self.discriminator(gens_detached)
                 d_real = self.discriminator(labels)
 
                 # Compute discriminator loss
-                d_loss, _ = loss(gens_detached, labels, d_fake, d_real)
+                d_loss, _ = loss(gens_detached, labels, d_fake, d_real, compute_d=True)
 
-                # Discriminator Loss Backprop
                 self.d_optimizer.zero_grad()
                 d_loss.backward()
                 self.d_optimizer.step()
-
-                # Compute discriminator loss for detached generator
-                d_fake_for_g = self.discriminator(gens) # Recompute so tensors are different
-                _, g_loss = loss(gens, labels, d_fake_for_g, torch.ones_like(d_real))
+                ### END UPDATE DISCRIMINATOR ###
+               
+                ### UPDATE GENERATOR ###
+                d_fake_for_g = self.discriminator(gens) # Recompute 
+                _, g_loss = loss(gens, labels, d_fake_for_g, None, compute_g=True)
+                #print(g_loss)
 
                 # Generator Loss Backprop
                 self.g_optimizer.zero_grad()
                 g_loss.backward()
                 self.g_optimizer.step()
+                ### END UPDATE GENERATOR ###
 
                 # Training losses
                 train_g_epoch_loss.append(g_loss.item())
@@ -304,18 +307,16 @@ class PtTrainer():
                     images = images.to(self.device)
                     labels = labels.to(self.device)
 
-                    # Forward pass
+                    # Detach generations to prevent generator gradients from being updated
                     gens = self.generator(images)
-                    gens_detached = gens.detach() # Detach generations to prevent interference
+                    gens_detached = gens.detach()
                     d_fake = self.discriminator(gens_detached)
                     d_real = self.discriminator(labels)
 
                     # Compute discriminator loss
-                    d_loss, _ = loss(gens_detached, labels, d_fake, d_real)
-
-                    # Re-Compute discriminator loss for fake data
-                    d_fake_for_g = self.discriminator(gens) # Recompute so tensors are different
-                    _, g_loss = loss(gens, labels, d_fake_for_g, torch.ones_like(d_real))
+                    d_loss, _ = loss(gens_detached, labels, d_fake, d_real, compute_d=True)
+                    d_fake_for_g = self.discriminator(gens) # Recompute 
+                    _, g_loss = loss(gens, labels, d_fake_for_g, None, compute_g=True)
 
                     # Validation losses
                     val_g_epoch_loss.append(g_loss.item())
@@ -367,18 +368,16 @@ class PtTrainer():
                 images = images.to(self.device)
                 labels = labels.to(self.device)
 
-                # Forward pass
+                # Detach generations to prevent generator gradients from being updated
                 gens = self.generator(images)
-                gens_detached = gens.detach() # Detach generations to prevent interference
+                gens_detached = gens.detach()
                 d_fake = self.discriminator(gens_detached)
                 d_real = self.discriminator(labels)
 
                 # Compute discriminator loss
-                d_loss, _ = loss(gens_detached, labels, d_fake, d_real)
-
-                # Re-Compute discriminator loss for fake data
-                d_fake_for_g = self.discriminator(gens) # Recompute so tensors are different
-                _, g_loss = loss(gens, labels, d_fake_for_g, torch.ones_like(d_real))
+                d_loss, _ = loss(gens_detached, labels, d_fake, d_real, compute_d=True)
+                d_fake_for_g = self.discriminator(gens) # Recompute 
+                _, g_loss = loss(gens, labels, d_fake_for_g, None, compute_g=True)
 
                 # Test losses
                 test_loss_g.append(g_loss.item())
