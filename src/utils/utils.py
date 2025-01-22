@@ -184,19 +184,20 @@ class Utils():
 
         # Concatenate images together
         images = [lr, hr] + samples
-        labels = ['lr', 'hr'] + gen_labels
+        labels = [f'Low res: {tuple(lr.shape[2:])}', f'high res: {tuple(hr.shape[2:])}'] + gen_labels
 
         # Plot the concatenated images
         # Figure size: 3 (lr, hr, sr) x # of images in batch
-        fig, axes = plt.subplots(dataloader.batch_size, len(labels), figsize=(8, 5))
-        plt.tight_layout(pad=0.5, w_pad=0.5, h_pad=0.5)
-        fig.patch.set_facecolor('white')
+        fig, axes = plt.subplots(dataloader.batch_size, len(labels), figsize=(8, 11))
+        #fig.subplots_adjust(left=0.2, right=0.2, top=0.9, bottom=0.2)
+        fig.tight_layout(pad=0.75, w_pad=0.1, h_pad=0.1)
+        fig.patch.set_facecolor('#151b23') # Github dark mode background
 
         # Label axes
         for c, name in enumerate(labels):
             for r, image in enumerate(images[c]):
                 # Set Title
-                axes[0,c].set_title(name)
+                axes[0,c].set_title(name, color='white')
 
                 # Isolate images, Convert (C, H, W) to (H, W, C)
                 image = image.permute((1, 2, 0))
@@ -205,8 +206,7 @@ class Utils():
 
                 # Display image
                 axes[r, c].imshow(image)
-                axes[r, c].axis('on')
+                axes[r, c].axis('off')
 
-        plt.tight_layout()
         plt.show()
     
